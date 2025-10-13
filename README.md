@@ -7,6 +7,7 @@ InstaTrack est un outil Python qui automatise la récupération quotidienne des 
 - Authentification via un compte observateur (instagrapi) avec session persistée.
 - Sauvegarde des snapshots followers/following dans MongoDB et détection automatique des ajouts / suppressions.
 - Tableau de bord Flask avec graphiques (Chart.js) et export CSV des rapports.
+- Dashboard modernisé : sélecteur de période (7/14/30 jours), indicateurs "net", tops entrants/sortants et téléchargement CSV en un clic.
 - CLI unifiée pour lancer une collecte, afficher un rapport, démarrer l'UI ou planifier un suivi quotidien (APScheduler).
 - Journalisation centralisée et configuration par variables d'environnement (`.env`).
 
@@ -42,9 +43,11 @@ python main.py web --host 0.0.0.0 --port 5000
 
 L'application affiche :
 
-- Un récapitulatif des gains/pertes sur 7 jours.
-- Un graphique (Chart.js) des variations quotidiennes.
-- Un tableau des derniers changements (followers/following).
+- Un récapitulatif des gains/pertes sur la période sélectionnée (7/14/30 jours).
+- Des graphiques séparés pour followers et following (ajouts, suppressions, net).
+- Des insights avancés : croissance moyenne, record de la période, série positive, tops entrées/sorties.
+- Un tableau chronologique des derniers changements et un export CSV directement depuis le dashboard.
+- Des actions rapides : masquage des graphiques, capture immédiate, aperçu de rapport et activation du scheduler.
 
 ## ⏰ Planification quotidienne
 

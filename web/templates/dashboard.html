@@ -3,78 +3,249 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>InstaTrack Dashboard</title>
-	 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+	<title>InstaTrack · Tableau de bord</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 	<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-	<script defer src="{{ url_for('static', filename='js/chart.js') }}" data-daily="{{ daily | tojson }}"></script>
+	<script
+		defer
+		src="{{ url_for('static', filename='js/chart.js') }}"
+		data-daily="{{ daily | tojson }}"
+	></script>
 </head>
 <body>
+	<div class="gradient-bg" aria-hidden="true"></div>
 	<header class="header">
-		<h1>InstaTrack</h1>
-		<p>Suivi des changements sur les 7 derniers jours</p>
+		<div class="header__content">
+			<div>
+				<h1>InstaTrack</h1>
+				<p>Analyse consolidée des interactions Instagram</p>
+			</div>
+			<div class="header__meta">
+				<div>
+					<span class="meta-label">Période analysée</span>
+					<span class="meta-value">{{ selected_days }} jours</span>
+				</div>
+				<div>
+					<span class="meta-label">Dernière mise à jour</span>
+					<span class="meta-value">{{ totals.last_updated or '—' }}</span>
+				</div>
+			</div>
+		</div>
 	</header>
 
 	<main class="content">
 		{% if accounts %}
-		<form class="account-select" method="get">
-			<label for="account">Compte suivi</label>
-			<select id="account" name="account" onchange="this.form.submit()">
-				{% for account in accounts %}
-				<option value="{{ account }}" {% if account == default_account %}selected{% endif %}>{{ account }}</option>
-				{% endfor %}
-			</select>
+		<form class="filters" method="get" data-default-days="{{ selected_days }}">
+			<div class="field">
+				<label for="account">Compte suivi</label>
+				<select id="account" name="account">
+					{% for account in accounts %}
+					<option value="{{ account }}" {% if account == default_account %}selected{% endif %}>{{ account }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="field">
+				<label for="days">Fenêtre</label>
+				<select id="days" name="days">
+					{% for value in timeframes %}
+					<option value="{{ value }}" {% if value == selected_days %}selected{% endif %}>{{ value }} jours</option>
+					{% endfor %}
+				</select>
+			</div>
+			<button type="submit" class="btn btn--primary">Actualiser</button>
+			<a
+				class="btn btn--ghost"
+				href="{{ url_for('export_csv', account=default_account, days=selected_days) }}"
+			>
+				Exporter CSV
+			</a>
 		</form>
 		{% endif %}
 
-		<section class="summary">
-			<div class="summary-card">
-				<span class="label">Nouveaux followers</span>
-				<span class="value">{{ counts.get('followers_added', 0) }}</span>
+		<section class="action-bar" aria-label="Actions rapides">
+			<button type="button" class="btn btn--ghost" id="toggleChartsBtn">
+				Masquer les graphiques
+			</button>
+			<button type="button" class="btn btn--primary" id="runSnapshotBtn">
+				Lancer une capture
+			</button>
+			<button type="button" class="btn btn--ghost" id="viewReportBtn">
+				Voir le rapport
+			</button>
+			<button type="button" class="btn btn--ghost" id="startScheduleBtn">
+				Activer la planification
+			</button>
+		</section>
+
+		<div id="actionStatus" class="action-status" role="status" aria-live="polite" hidden></div>
+
+		<section class="metrics-grid">
+			<div class="metric-card">
+				<span class="metric-label">Followers totaux</span>
+				<span class="metric-value">{{ totals.followers_total }}</span>
+				<span class="metric-sub">Actualisé le {{ totals.followers_updated_at or '—' }}</span>
 			</div>
-			<div class="summary-card">
-				<span class="label">Perte followers</span>
-				<span class="value">{{ counts.get('followers_removed', 0) }}</span>
+			<div class="metric-card">
+				<span class="metric-label">Following totaux</span>
+				<span class="metric-value">{{ totals.following_total }}</span>
+				<span class="metric-sub">Actualisé le {{ totals.following_updated_at or '—' }}</span>
 			</div>
-			<div class="summary-card">
-				<span class="label">Nouveaux suivis</span>
-				<span class="value">{{ counts.get('following_added', 0) }}</span>
+			<div class="metric-card">
+				<span class="metric-label">Net followers</span>
+				<span class="metric-value {{ 'value-positive' if insights.net_followers > 0 else 'value-negative' if insights.net_followers < 0 else '' }}">{{ insights.net_followers }}</span>
+				<span class="metric-sub">Sur la période sélectionnée</span>
 			</div>
-			<div class="summary-card">
-				<span class="label">Désabonnements</span>
-				<span class="value">{{ counts.get('following_removed', 0) }}</span>
+			<div class="metric-card">
+				<span class="metric-label">Net following</span>
+				<span class="metric-value {{ 'value-positive' if insights.net_following > 0 else 'value-negative' if insights.net_following < 0 else '' }}">{{ insights.net_following }}</span>
+				<span class="metric-sub">Comptes suivis gagnés/perdus</span>
+			</div>
+			<div class="metric-card">
+				<span class="metric-label">Total des changements</span>
+				<span class="metric-value">{{ insights.total_changes }}</span>
+				<span class="metric-sub">Followers & following confondus</span>
+			</div>
+			<div class="metric-card">
+				<span class="metric-label">Série positive</span>
+				<span class="metric-value">{{ insights.positive_streak_days }}</span>
+				<span class="metric-sub">Jours consécutifs en hausse</span>
 			</div>
 		</section>
 
-		<section class="chart-section">
-			<h2>Historique quotidien</h2>
-			<canvas id="dailyChart"></canvas>
+		<section class="panel-row">
+			<article class="panel">
+				<div class="panel-header">
+					<h2>Followers · Historique</h2>
+					<p>Ajouts, suppressions et net sur {{ selected_days }} jours</p>
+				</div>
+				<canvas id="followersChart"></canvas>
+			</article>
+			<article class="panel">
+				<div class="panel-header">
+					<h2>Following · Historique</h2>
+					<p>Evolution des comptes suivis</p>
+				</div>
+				<canvas id="followingChart"></canvas>
+			</article>
 		</section>
 
-		<section class="changes">
-			<h2>Derniers événements</h2>
+		<section class="panel-grid">
+			<article class="panel insights">
+				<div class="panel-header">
+					<h2>Insights clés</h2>
+					<p>Indicateurs dérivés sur la période</p>
+				</div>
+				<ul class="insight-list">
+					<li>
+						<span class="insight-label">Croissance moyenne / jour</span>
+						<span class="insight-value">{{ insights.average_daily_followers }}</span>
+					</li>
+					<li>
+						<span class="insight-label">Variation moyenne following</span>
+						<span class="insight-value">{{ insights.average_daily_following }}</span>
+					</li>
+					<li>
+						<span class="insight-label">Dernière activité</span>
+						<span class="insight-value">{{ insights.latest_activity.detected_at if insights.latest_activity else '—' }}</span>
+					</li>
+				</ul>
+				{% if insights.best_day %}
+				<div class="insight-highlight insight-highlight--positive">
+					<strong>Jour record</strong>
+					<p>{{ insights.best_day.date }} · +{{ insights.best_day.followers_net }} followers</p>
+				</div>
+				{% endif %}
+				{% if insights.worst_day %}
+				<div class="insight-highlight insight-highlight--neutral">
+					<strong>Jour le plus calme</strong>
+					<p>{{ insights.worst_day.date }} · {{ insights.worst_day.followers_net }} followers</p>
+				</div>
+				{% endif %}
+		</article>
+			<article class="panel list-panel">
+				<div class="panel-header">
+					<h2>Followers gagnés</h2>
+					<p>Top {{ insights.top_new_followers | length or 0 }} des entrées récentes</p>
+				</div>
+				<ul class="change-list">
+					{% for change in insights.top_new_followers %}
+					<li>
+						<div>
+							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu' }}</span>
+							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
+						</div>
+					</li>
+					{% else %}
+					<li class="empty">Aucun nouveau follower durant cette période.</li>
+					{% endfor %}
+				</ul>
+			</article>
+			<article class="panel list-panel">
+				<div class="panel-header">
+					<h2>Followers perdus</h2>
+					<p>Suivi des départs les plus récents</p>
+				</div>
+				<ul class="change-list">
+					{% for change in insights.top_lost_followers %}
+					<li>
+						<div>
+							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu' }}</span>
+							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
+						</div>
+					</li>
+					{% else %}
+					<li class="empty">Aucune perte détectée sur la période.</li>
+					{% endfor %}
+				</ul>
+			</article>
+		</section>
+
+		<section class="panel full-width">
+			<div class="panel-header">
+				<h2>Flux des évènements</h2>
+				<p>Historique détaillé des modifications</p>
+			</div>
+			{% if change_limit %}
+			<p class="table-note">Affichage des {{ change_limit }} derniers événements (utilisez l'export CSV pour le détail complet).</p>
+			{% endif %}
 			{% if changes %}
-			<table>
+			<table class="data-table">
 				<thead>
 					<tr>
 						<th>Date</th>
-						<th>Type</th>
+						<th>Liste</th>
+						<th>Action</th>
 						<th>Utilisateur</th>
+						<th>Nom complet</th>
 					</tr>
 				</thead>
 				<tbody>
 					{% for change in changes %}
 					<tr>
-						<td>{{ change['detected_at'] }}</td>
-						<td>{{ change['list_type'] }} - {{ change['change_type'] }}</td>
-						<td>{{ change['username'] or change['full_name'] or 'Inconnu' }}</td>
+						<td>{{ change['detected_at'] | replace('T', ' ') }}</td>
+						<td>{{ change['list_type'] }}</td>
+						<td class="{% if change['change_type'] == 'added' %}value-positive{% else %}value-negative{% endif %}">
+							{{ 'Ajout' if change['change_type'] == 'added' else 'Suppression' }}
+						</td>
+						<td>{{ change['username'] or '—' }}</td>
+						<td>{{ change['full_name'] or '—' }}</td>
 					</tr>
 					{% endfor %}
 				</tbody>
 			</table>
 			{% else %}
-			<p>Aucun changement enregistré pour cette période.</p>
+			<p class="empty">Aucun changement enregistré pour cette période.</p>
 			{% endif %}
 		</section>
 	</main>
+
+	<div id="reportModal" class="modal" hidden tabindex="-1">
+		<div class="modal__backdrop" data-close="modal"></div>
+		<div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+			<button type="button" class="modal__close" data-close="modal" aria-label="Fermer le rapport">×</button>
+			<h3 id="reportModalTitle">Rapport détaillé</h3>
+			<div id="reportModalBody" class="modal__body"></div>
+		</div>
+	</div>
 </body>
 </html>

@@ -124,6 +124,7 @@ class MongoStorage:
 		*,
 		target_account: Optional[str] = None,
 		since: Optional[datetime] = None,
+		limit: Optional[int] = None,
 	) -> List[Dict[str, Any]]:
 		query: Dict[str, Any] = {}
 		if target_account:
@@ -131,11 +132,9 @@ class MongoStorage:
 		if since:
 			query["detected_at"] = {"$gte": since}
 
-		cursor = (
-			self._collection(self.CHANGES_COLLECTION)
-			.find(query)
-			.sort("detected_at", -1)
-		)
+		cursor = self._collection(self.CHANGES_COLLECTION).find(query).sort("detected_at", -1)
+		if limit:
+			cursor = cursor.limit(limit)
 		return list(cursor)
 
 

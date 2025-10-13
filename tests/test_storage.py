@@ -39,3 +39,38 @@ def test_changes_since_filters_by_time_and_account():
 	recent = storage.changes_since(target_account="demo", since=detection_time - timedelta(days=1))
 	assert len(recent) == 1
 	assert recent[0]["user"]["username"] == "bob"
+
+
+def test_changes_since_respects_limit():
+	storage = MongoStorage()
+	base_time = datetime.now(UTC)
+	storage.store_changes(
+		[
+			{
+				"target_account": "demo",
+				"list_type": "followers",
+				"change_type": "added",
+				"detected_at": base_time,
+				"user": {"pk": 1, "username": "alice"},
+			},
+			{
+				"target_account": "demo",
+				"list_type": "followers",
+				"change_type": "added",
+				"detected_at": base_time - timedelta(minutes=1),
+				"user": {"pk": 2, "username": "bob"},
+			},
+			{
+				"target_account": "demo",
+				"list_type": "followers",
+				"change_type": "removed",
+				"detected_at": base_time - timedelta(minutes=2),
+				"user": {"pk": 3, "username": "carol"},
+			},
+		]
+	)
+
+	results = storage.changes_since(target_account="demo", limit=2)
+	assert len(results) == 2
+	assert results[0]["user"]["username"] == "alice"
+	assert results[1]["user"]["username"] == "bob"
