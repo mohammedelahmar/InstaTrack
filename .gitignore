@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+
+# Testing framework cache
+.pytest_cache/
+
+# Local environment variables and config
+.env
+
+# Qodo files
+.qodo/
+
+# Logs and runtime data
+*.log
+/data/cache/
+
+# Operating System files (optional but recommended)
+.DS_Store
+Thumbs.db

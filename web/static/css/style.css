@@ -1,0 +1,145 @@
+:root {
+	color-scheme: light dark;
+	font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+	margin: 0;
+	background: #0f172a;
+	color: #f8fafc;
+}
+
+.header {
+	padding: 2rem;
+	background: linear-gradient(135deg, #2563eb, #7c3aed);
+	text-align: center;
+}
+
+.header h1 {
+	margin: 0 0 0.5rem;
+	font-size: 2.5rem;
+}
+
+.header p {
+	margin: 0;
+	opacity: 0.8;
+}
+
+.content {
+	max-width: 1100px;
+	margin: -3rem auto 3rem;
+	padding: 0 1.5rem;
+}
+
+.account-select {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	margin-bottom: 1.5rem;
+	background: #1e293b;
+	padding: 1rem 1.5rem;
+	border-radius: 1rem;
+}
+
+.account-select label {
+	font-size: 0.95rem;
+	opacity: 0.8;
+}
+
+.account-select select {
+	background: #0f172a;
+	color: inherit;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 0.75rem;
+	padding: 0.5rem 1rem;
+	font-size: 1rem;
+}
+
+.summary {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 1rem;
+}
+
+.summary-card {
+	background: #1e293b;
+	padding: 1.5rem;
+	border-radius: 1rem;
+	box-shadow: 0 15px 35px rgba(15, 23, 42, 0.35);
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.summary-card .label {
+	font-size: 0.9rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.7;
+}
+
+.summary-card .value {
+	font-size: 2rem;
+	font-weight: 700;
+}
+
+.chart-section {
+	margin-top: 2.5rem;
+	padding: 1.5rem;
+	background: #1e293b;
+	border-radius: 1rem;
+	box-shadow: 0 15px 35px rgba(15, 23, 42, 0.35);
+	height: 380px;
+}
+
+.chart-section h2,
+.changes h2 {
+	margin-top: 0;
+}
+
+.changes {
+	margin-top: 2.5rem;
+	padding: 1.5rem;
+	background: #1e293b;
+	border-radius: 1rem;
+	box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 1rem;
+}
+
+th,
+td {
+	text-align: left;
+	padding: 0.75rem 1rem;
+}
+
+thead {
+	background: rgba(148, 163, 184, 0.12);
+}
+
+tbody tr:nth-child(even) {
+	background: rgba(148, 163, 184, 0.05);
+}
+
+tbody tr:not(:last-child) td {
+	border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+@media (max-width: 768px) {
+	.header {
+		padding: 1.5rem 1rem;
+	}
+
+	.summary-card {
+		padding: 1rem;
+	}
+
+	.chart-section,
+	.changes {
+		padding: 1rem;
+	}
+}

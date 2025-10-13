@@ -1,0 +1,9 @@
+APScheduler==3.10.4
+Flask==3.0.3
+instagrapi==1.17.10
+mongomock==4.1.2
+pymongo==4.7.1
+python-dotenv==1.0.1
+pytest==7.4.4
+pillow==10.4.0
+setuptools>=69.0

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>InstaTrack Dashboard</title>
+	 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+	<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+	<script defer src="{{ url_for('static', filename='js/chart.js') }}" data-daily="{{ daily | tojson }}"></script>
+</head>
+<body>
+	<header class="header">
+		<h1>InstaTrack</h1>
+		<p>Suivi des changements sur les 7 derniers jours</p>
+	</header>
+
+	<main class="content">
+		{% if accounts %}
+		<form class="account-select" method="get">
+			<label for="account">Compte suivi</label>
+			<select id="account" name="account" onchange="this.form.submit()">
+				{% for account in accounts %}
+				<option value="{{ account }}" {% if account == default_account %}selected{% endif %}>{{ account }}</option>
+				{% endfor %}
+			</select>
+		</form>
+		{% endif %}
+
+		<section class="summary">
+			<div class="summary-card">
+				<span class="label">Nouveaux followers</span>
+				<span class="value">{{ counts.get('followers_added', 0) }}</span>
+			</div>
+			<div class="summary-card">
+				<span class="label">Perte followers</span>
+				<span class="value">{{ counts.get('followers_removed', 0) }}</span>
+			</div>
+			<div class="summary-card">
+				<span class="label">Nouveaux suivis</span>
+				<span class="value">{{ counts.get('following_added', 0) }}</span>
+			</div>
+			<div class="summary-card">
+				<span class="label">Désabonnements</span>
+				<span class="value">{{ counts.get('following_removed', 0) }}</span>
+			</div>
+		</section>
+
+		<section class="chart-section">
+			<h2>Historique quotidien</h2>
+			<canvas id="dailyChart"></canvas>
+		</section>
+
+		<section class="changes">
+			<h2>Derniers événements</h2>
+			{% if changes %}
+			<table>
+				<thead>
+					<tr>
+						<th>Date</th>
+						<th>Type</th>
+						<th>Utilisateur</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for change in changes %}
+					<tr>
+						<td>{{ change['detected_at'] }}</td>
+						<td>{{ change['list_type'] }} - {{ change['change_type'] }}</td>
+						<td>{{ change['username'] or change['full_name'] or 'Inconnu' }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			{% else %}
+			<p>Aucun changement enregistré pour cette période.</p>
+			{% endif %}
+		</section>
+	</main>
+</body>
+</html>
