@@ -63,6 +63,7 @@ def create_app(reports: ReportService | None = None, tracker: TrackerService | N
 		daily = report_provider.daily_summary(days=days, target_account=default_account)
 		totals = report_provider.current_totals(target_account=default_account)
 		insights = report_provider.insights(days=days, target_account=default_account)
+		gaps = report_provider.follow_back_gaps(target_account=default_account, limit=25)
 
 		return render_template(
 			"dashboard.html",
@@ -71,6 +72,7 @@ def create_app(reports: ReportService | None = None, tracker: TrackerService | N
 			daily=daily,
 			totals=totals,
 			insights=insights,
+			gaps=gaps,
 			accounts=accounts,
 			default_account=default_account,
 			timeframes=timeframes,
@@ -117,6 +119,7 @@ def create_app(reports: ReportService | None = None, tracker: TrackerService | N
 			limit=preview_limit,
 		)
 		totals = report_provider.current_totals(target_account=account)
+		gaps = report_provider.follow_back_gaps(target_account=account, limit=preview_limit)
 		return jsonify(
 			{
 				"status": "ok",
@@ -124,6 +127,7 @@ def create_app(reports: ReportService | None = None, tracker: TrackerService | N
 				"insights": insights,
 				"recent": recent,
 				"totals": totals,
+				"gaps": gaps,
 			}
 		)
 

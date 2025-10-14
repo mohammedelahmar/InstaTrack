@@ -105,21 +105,14 @@ class ReportService:
 		followers_count = len(latest_followers.get("users", [])) if latest_followers else 0
 		following_count = len(latest_following.get("users", [])) if latest_following else 0
 
-		def _iso_or_none(value: datetime | None) -> str | None:
-			if value is None:
-				return None
-			if value.tzinfo is None:
-				value = value.replace(tzinfo=UTC)
-			return value.isoformat()
-
-		followers_updated_at = _iso_or_none(latest_followers.get("collected_at") if latest_followers else None)
-		following_updated_at = _iso_or_none(latest_following.get("collected_at") if latest_following else None)
+		followers_updated_at = self._iso_or_none(latest_followers.get("collected_at") if latest_followers else None)
+		following_updated_at = self._iso_or_none(latest_following.get("collected_at") if latest_following else None)
 
 		last_updated_candidate = [value for value in [
 			latest_followers.get("collected_at") if latest_followers else None,
 			latest_following.get("collected_at") if latest_following else None,
 		] if value is not None]
-		last_updated = _iso_or_none(max(last_updated_candidate)) if last_updated_candidate else None
+		last_updated = self._iso_or_none(max(last_updated_candidate)) if last_updated_candidate else None
 
 		return {
 			"followers_total": followers_count,
@@ -128,6 +121,80 @@ class ReportService:
 			"following_updated_at": following_updated_at,
 			"last_updated": last_updated,
 		}
+
+	def follow_back_gaps(
+		self,
+		*,
+		target_account: Optional[str] = None,
+		limit: int = 25,
+	) -> Dict[str, object]:
+		if not target_account:
+			return {
+				"not_following_you_back": {"count": 0, "users": []},
+				"you_dont_follow_back": {"count": 0, "users": []},
+				"updated_at": {"followers": None, "following": None},
+			}
+
+		followers_snapshot = self._storage.latest_snapshot(target_account, "followers")
+		following_snapshot = self._storage.latest_snapshot(target_account, "following")
+
+		followers_users = followers_snapshot.get("users", []) if followers_snapshot else []
+		following_users = following_snapshot.get("users", []) if following_snapshot else []
+
+		def _user_key(user: Dict[str, str]) -> str:
+			pk = user.get("pk")
+			if pk is not None:
+				return str(pk)
+			username = user.get("username")
+			if username:
+				return f"username:{username.lower()}"
+			full_name = user.get("full_name")
+			if full_name:
+				return f"full:{full_name.lower()}"
+			return repr(sorted(user.items()))
+
+		followers_map = {_user_key(user): user for user in followers_users}
+		following_map = {_user_key(user): user for user in following_users}
+
+		def _sort_key(user: Dict[str, str]) -> tuple[str, str]:
+			username = user.get("username") or ""
+			full_name = user.get("full_name") or ""
+			return (username.casefold(), full_name.casefold())
+
+		not_following_back_keys = following_map.keys() - followers_map.keys()
+		you_dont_follow_back_keys = followers_map.keys() - following_map.keys()
+
+		not_following_back_all = sorted(
+			(following_map[key] for key in not_following_back_keys),
+			key=_sort_key,
+		)
+		you_dont_follow_back_all = sorted(
+			(followers_map[key] for key in you_dont_follow_back_keys),
+			key=_sort_key,
+		)
+
+		limit = max(0, limit)
+
+		response = {
+			"not_following_you_back": {
+				"count": len(not_following_back_all),
+				"users": not_following_back_all[:limit],
+			},
+			"you_dont_follow_back": {
+				"count": len(you_dont_follow_back_all),
+				"users": you_dont_follow_back_all[:limit],
+			},
+			"updated_at": {
+				"followers": self._iso_or_none(
+					followers_snapshot.get("collected_at") if followers_snapshot else None
+				),
+				"following": self._iso_or_none(
+					following_snapshot.get("collected_at") if following_snapshot else None
+				),
+			},
+		}
+
+		return response
 
 	def insights(
 		self,
@@ -232,6 +299,14 @@ class ReportService:
 			"username": user.get("username"),
 			"full_name": user.get("full_name"),
 		}
+
+	@staticmethod
+	def _iso_or_none(value: datetime | None) -> str | None:
+		if value is None:
+			return None
+		if value.tzinfo is None:
+			value = value.replace(tzinfo=UTC)
+		return value.isoformat()
 
 
 report_service = ReportService()

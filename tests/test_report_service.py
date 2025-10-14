@@ -114,3 +114,40 @@ def test_recent_changes_respects_limit():
 	assert len(changes) == 3
 	assert changes[0]["username"] == "user0"
 	assert changes[-1]["username"] == "user2"
+
+
+def test_follow_back_gaps_returns_expected_lists():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	now = datetime(2025, 2, 1, 9, 0, tzinfo=UTC)
+
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="followers",
+		users=[
+			{"pk": 1, "username": "alice", "full_name": "Alice"},
+			{"pk": 2, "username": "bob", "full_name": "Bob"},
+		],
+		collected_at=now,
+	)
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="following",
+		users=[
+			{"pk": 1, "username": "alice", "full_name": "Alice"},
+			{"pk": 3, "username": "carol", "full_name": "Carol"},
+			{"pk": 4, "username": "dave", "full_name": "Dave"},
+		],
+		collected_at=now,
+	)
+
+	gaps = report.follow_back_gaps(target_account="demo", limit=1)
+
+	assert gaps["not_following_you_back"]["count"] == 2
+	assert len(gaps["not_following_you_back"]["users"]) == 1
+	assert gaps["not_following_you_back"]["users"][0]["username"] == "carol"
+	assert gaps["you_dont_follow_back"]["count"] == 1
+	assert len(gaps["you_dont_follow_back"]["users"]) == 1
+	assert gaps["you_dont_follow_back"]["users"][0]["username"] == "bob"
+	assert gaps["updated_at"]["followers"] == now.isoformat()
+	assert gaps["updated_at"]["following"] == now.isoformat()

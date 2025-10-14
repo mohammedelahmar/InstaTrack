@@ -368,6 +368,51 @@ body.charts-hidden .panel-row {
 	padding: 0.85rem 1rem;
 }
 
+.followback-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.followback-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.5rem;
+	font-size: 0.9rem;
+	color: var(--text-secondary);
+}
+
+.followback-columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 1.5rem;
+}
+
+.followback-column h3 {
+	margin: 0 0 0.35rem;
+	font-size: 1.15rem;
+}
+
+.followback-count {
+	margin: 0 0 1rem;
+	font-size: 0.95rem;
+	color: var(--text-secondary);
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.2rem 0.6rem;
+	border-radius: 999px;
+	background: rgba(56, 189, 248, 0.16);
+	border: 1px solid rgba(56, 189, 248, 0.35);
+	font-size: 0.75rem;
+	letter-spacing: 0.05em;
+}
+
 .change-user {
 	display: block;
 	font-weight: 600;

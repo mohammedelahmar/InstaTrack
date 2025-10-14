@@ -200,6 +200,61 @@
 			</article>
 		</section>
 
+		<section class="panel followback-panel">
+			<div class="panel-header">
+				<h2>Who Doesn’t Follow Back 👀</h2>
+				<p>Comparaison de vos listes following et followers</p>
+			</div>
+			<div class="followback-meta">
+				<span>Followers · {{ gaps.updated_at.followers or '—' }}</span>
+				<span>Following · {{ gaps.updated_at.following or '—' }}</span>
+			</div>
+			<div class="followback-columns">
+				<div class="followback-column">
+					<h3>Not Following You Back</h3>
+					<p class="followback-count">
+						{{ gaps.not_following_you_back.count }} comptes
+						{% if gaps.not_following_you_back.count > (gaps.not_following_you_back.users | length) %}
+							<span class="badge">Top {{ gaps.not_following_you_back.users | length }}</span>
+						{% endif %}
+					</p>
+					<ul class="change-list">
+						{% for user in gaps.not_following_you_back.users %}
+						<li>
+							<div>
+								<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
+								<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+							</div>
+						</li>
+						{% else %}
+						<li class="empty">Tout le monde vous suit en retour 🎉</li>
+						{% endfor %}
+					</ul>
+				</div>
+				<div class="followback-column">
+					<h3>You Don’t Follow Back</h3>
+					<p class="followback-count">
+						{{ gaps.you_dont_follow_back.count }} comptes
+						{% if gaps.you_dont_follow_back.count > (gaps.you_dont_follow_back.users | length) %}
+							<span class="badge">Top {{ gaps.you_dont_follow_back.users | length }}</span>
+						{% endif %}
+					</p>
+					<ul class="change-list">
+						{% for user in gaps.you_dont_follow_back.users %}
+						<li>
+							<div>
+								<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
+								<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+							</div>
+						</li>
+						{% else %}
+						<li class="empty">Vous suivez tout le monde en retour 👍</li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+		</section>
+
 		<section class="panel full-width">
 			<div class="panel-header">
 				<h2>Flux des évènements</h2>

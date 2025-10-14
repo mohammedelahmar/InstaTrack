@@ -266,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!reportModal || !reportModalBody) {
 			return;
 		}
-		const { counts = {}, insights = {}, recent = [], totals = {} } = payload;
+		const { counts = {}, insights = {}, recent = [], totals = {}, gaps = {} } = payload;
 		const countsList = Object.entries(counts)
 			.map(([key, value]) => `<li><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></li>`)
 			.join("");
@@ -300,6 +300,38 @@ document.addEventListener("DOMContentLoaded", () => {
 		const totalsList = Object.entries(totals)
 			.map(([key, value]) => `<li><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></li>`)
 			.join("");
+		const notBack = Array.isArray(gaps.not_following_you_back?.users) ? gaps.not_following_you_back.users : [];
+		const notBackCount = gaps.not_following_you_back?.count ?? notBack.length;
+		const youDontBack = Array.isArray(gaps.you_dont_follow_back?.users) ? gaps.you_dont_follow_back.users : [];
+		const youDontBackCount = gaps.you_dont_follow_back?.count ?? youDontBack.length;
+		const renderGapUsers = (users) =>
+			users
+				.map((user) => {
+					const primary = user?.username || user?.full_name || "—";
+					const secondary = user?.full_name && user?.username && user.full_name !== user.username ? user.full_name : "";
+					return `
+						<li>
+							<span>${escapeHtml(primary)}</span>
+							${secondary ? `<strong>${escapeHtml(secondary)}</strong>` : ""}
+						</li>
+					`;
+				})
+				.join("");
+		const gapsSection = `
+			<section>
+				<h4>Who Doesn’t Follow Back</h4>
+				<div class="modal-grid">
+					<div>
+						<h5>Not Following You Back (${escapeHtml(notBackCount)})</h5>
+						<ul class="modal-list">${renderGapUsers(notBack) || "<li>Aucun écart</li>"}</ul>
+					</div>
+					<div>
+						<h5>You Don’t Follow Back (${escapeHtml(youDontBackCount)})</h5>
+						<ul class="modal-list">${renderGapUsers(youDontBack) || "<li>Aucun écart</li>"}</ul>
+					</div>
+				</div>
+			</section>
+		`;
 
 		reportModalBody.innerHTML = `
 			<section>
@@ -325,6 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
 					</div>
 				</div>
 			</section>
+			${gapsSection}
 			<section>
 				<h4>Derniers événements (${recent.length})</h4>
 				<ul class="modal-list modal-list--scroll">${recentItems || "<li>Aucun événement.</li>"}</ul>
