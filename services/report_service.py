@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import csv
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, time
 from pathlib import Path
 from statistics import fmean
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from utils.storage import MongoStorage, storage as default_storage
+from utils import comparer
 
 
 class ReportService:
@@ -20,13 +21,16 @@ class ReportService:
 		self,
 		*,
 		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
 		target_account: Optional[str] = None,
 		limit: Optional[int] = None,
 	) -> List[Dict[str, int | str]]:
-		since = datetime.now(UTC) - timedelta(days=days)
+		resolved_start, resolved_end = self._resolve_range(days=days, start=start, end=end)
 		events = self._storage.changes_since(
 			target_account=target_account,
-			since=since,
+			since=resolved_start,
+			until=resolved_end,
 			limit=limit,
 		)
 		return [self._serialize_change(event) for event in events]
@@ -35,10 +39,16 @@ class ReportService:
 		self,
 		*,
 		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
 		target_account: Optional[str] = None,
 	) -> List[Dict[str, str]]:
-		since = datetime.now(UTC) - timedelta(days=days)
-		events = self._storage.changes_since(target_account=target_account, since=since)
+		resolved_start, resolved_end = self._resolve_range(days=days, start=start, end=end)
+		events = self._storage.changes_since(
+			target_account=target_account,
+			since=resolved_start,
+			until=resolved_end,
+		)
 
 		grouped: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 		for event in events:
@@ -72,8 +82,20 @@ class ReportService:
 			summary.append(entry)
 		return summary
 
-	def counts(self, *, days: int = 7, target_account: Optional[str] = None) -> Dict[str, int]:
-		events = self.recent_changes(days=days, target_account=target_account)
+	def counts(
+		self,
+		*,
+		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
+		target_account: Optional[str] = None,
+	) -> Dict[str, int]:
+		events = self.recent_changes(
+			days=days,
+			start=start,
+			end=end,
+			target_account=target_account,
+		)
 		counters: Dict[str, int] = defaultdict(int)
 		for event in events:
 			key = f"{event['list_type']}_{event['change_type']}"
@@ -200,12 +222,29 @@ class ReportService:
 		self,
 		*,
 		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
 		target_account: Optional[str] = None,
 		top: int = 5,
 	) -> Dict[str, object | None]:
-		recent = self.recent_changes(days=days, target_account=target_account)
-		counts = self.counts(days=days, target_account=target_account)
-		daily = self.daily_summary(days=days, target_account=target_account)
+		recent = self.recent_changes(
+			days=days,
+			start=start,
+			end=end,
+			target_account=target_account,
+		)
+		counts = self.counts(
+			days=days,
+			start=start,
+			end=end,
+			target_account=target_account,
+		)
+		daily = self.daily_summary(
+			days=days,
+			start=start,
+			end=end,
+			target_account=target_account,
+		)
 
 		net_followers_series = [entry.get("followers_net", 0) for entry in daily]
 		net_following_series = [entry.get("following_net", 0) for entry in daily]
@@ -272,9 +311,16 @@ class ReportService:
 		file_path: Path | str,
 		*,
 		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
 		target_account: Optional[str] = None,
 	) -> Path:
-		records = self.recent_changes(days=days, target_account=target_account)
+		records = self.recent_changes(
+			days=days,
+			start=start,
+			end=end,
+			target_account=target_account,
+		)
 		path = Path(file_path)
 		path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -299,6 +345,199 @@ class ReportService:
 			"username": user.get("username"),
 			"full_name": user.get("full_name"),
 		}
+
+	@staticmethod
+	def _iso_or_none(value: datetime | None) -> str | None:
+		if value is None:
+			return None
+		if value.tzinfo is None:
+			value = value.replace(tzinfo=UTC)
+		return value.isoformat()
+
+	@staticmethod
+	def _parse_date(value: str, *, end_of_day: bool = False) -> Optional[datetime]:
+		try:
+			if len(value) == 10:
+				# Assume YYYY-MM-DD
+				year, month, day = map(int, value.split("-"))
+				time_part = time(23, 59, 59, 999999) if end_of_day else time(0, 0)
+				dt = datetime(year, month, day, time_part.hour, time_part.minute, time_part.second, time_part.microsecond, tzinfo=UTC)
+			else:
+				dt = datetime.fromisoformat(value)
+			if dt.tzinfo is None:
+				dt = dt.replace(tzinfo=UTC)
+			return dt
+		except ValueError:
+			return None
+
+	def _resolve_range(
+		self,
+		*,
+		days: int = 7,
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
+	) -> Tuple[datetime, datetime]:
+		if isinstance(start, str):
+			start_dt = self._parse_date(start)
+		elif isinstance(start, datetime):
+			start_dt = start
+		else:
+			start_dt = None
+
+		if isinstance(end, str):
+			end_dt = self._parse_date(end, end_of_day=True)
+		elif isinstance(end, datetime):
+			end_dt = end
+		else:
+			end_dt = None
+
+		now = datetime.now(UTC)
+		if start_dt and not end_dt:
+			end_dt = now
+		if end_dt and not start_dt:
+			start_dt = end_dt - timedelta(days=days)
+
+		if not start_dt or not end_dt:
+			end_dt = now
+			start_dt = now - timedelta(days=days)
+
+		if start_dt.tzinfo is None:
+			start_dt = start_dt.replace(tzinfo=UTC)
+		if end_dt.tzinfo is None:
+			end_dt = end_dt.replace(tzinfo=UTC)
+
+		if start_dt > end_dt:
+			start_dt, end_dt = end_dt, start_dt
+
+		return start_dt, end_dt
+
+	def compare_snapshots(
+		self,
+		*,
+		target_account: Optional[str],
+		start: Optional[str | datetime],
+		end: Optional[str | datetime],
+		limit: int = 50,
+	) -> Dict[str, object]:
+		if not target_account:
+			return {
+				"available": False,
+				"range": {"start": None, "end": None},
+			}
+
+		start_dt, end_dt = self._resolve_range(days=7, start=start, end=end)
+		limit = max(1, limit)
+		comparisons: Dict[str, Dict[str, object]] = {}
+
+		for list_type in ("followers", "following"):
+			baseline = self._storage.snapshot_at(
+				target_account=target_account,
+				list_type=list_type,
+				moment=start_dt,
+			)
+			if baseline is None:
+				baseline = self._storage.snapshot_at(
+					target_account=target_account,
+					list_type=list_type,
+					moment=start_dt,
+					direction="after",
+				)
+
+			current = self._storage.snapshot_at(
+				target_account=target_account,
+				list_type=list_type,
+				moment=end_dt,
+			)
+			if current is None:
+				current = self._storage.latest_snapshot(target_account, list_type)
+
+			if not baseline or not current:
+				comparisons[list_type] = {
+					"available": False,
+					"baseline": None,
+					"current": None,
+					"added": [],
+					"removed": [],
+				}
+				continue
+
+			baseline_users = baseline.get("users", [])
+			current_users = current.get("users", [])
+			added, removed = comparer.diff_users(baseline_users, current_users)
+
+			comparisons[list_type] = {
+				"available": True,
+				"baseline": {
+					"collected_at": self._iso_or_none(baseline.get("collected_at")),
+					"count": len(baseline_users),
+				},
+				"current": {
+					"collected_at": self._iso_or_none(current.get("collected_at")),
+					"count": len(current_users),
+				},
+				"added": sorted(
+					added,
+					key=lambda user: (
+						(user.get("username") or "").casefold(),
+						(user.get("full_name") or "").casefold(),
+					),
+				)[:limit],
+				"removed": sorted(
+					removed,
+					key=lambda user: (
+						(user.get("username") or "").casefold(),
+						(user.get("full_name") or "").casefold(),
+					),
+				)[:limit],
+				"added_total": len(added),
+				"removed_total": len(removed),
+			}
+
+		return {
+			"available": any(section["available"] for section in comparisons.values()),
+			"range": {
+				"start": self._iso_or_none(start_dt),
+				"end": self._iso_or_none(end_dt),
+			},
+			"followers": comparisons.get("followers", {}),
+			"following": comparisons.get("following", {}),
+		}
+
+	def snapshot_history(
+		self,
+		*,
+		target_account: Optional[str],
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
+		limit: int = 20,
+	) -> Dict[str, List[Dict[str, object]]]:
+		if not target_account:
+			return {"followers": [], "following": []}
+		apply_range = bool(start or end)
+		if apply_range:
+			start_dt, end_dt = self._resolve_range(days=365, start=start, end=end)
+		else:
+			start_dt = None
+			end_dt = None
+		result: Dict[str, List[Dict[str, object]]] = {}
+		for list_type in ("followers", "following"):
+			snapshots = self._storage.snapshot_history(
+				target_account=target_account,
+				list_type=list_type,
+				start=start_dt,
+				end=end_dt,
+				limit=limit,
+			)
+			entries: List[Dict[str, object]] = []
+			for snapshot in snapshots:
+				entries.append(
+					{
+						"collected_at": self._iso_or_none(snapshot.get("collected_at")),
+						"count": len(snapshot.get("users", [])),
+					}
+				)
+			result[list_type] = entries
+		return result
 
 	@staticmethod
 	def _iso_or_none(value: datetime | None) -> str | None:

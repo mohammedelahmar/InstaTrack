@@ -116,6 +116,117 @@ def test_recent_changes_respects_limit():
 	assert changes[-1]["username"] == "user2"
 
 
+def test_recent_changes_filters_by_date_range():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	base_time = datetime(2025, 3, 10, 12, tzinfo=UTC)
+	storage.store_changes(
+		[
+			{
+				"target_account": "demo",
+				"list_type": "followers",
+				"change_type": "added",
+				"detected_at": base_time - timedelta(days=5),
+				"user": {"pk": 1, "username": "early"},
+			},
+			{
+				"target_account": "demo",
+				"list_type": "followers",
+				"change_type": "added",
+				"detected_at": base_time - timedelta(days=1),
+				"user": {"pk": 2, "username": "window"},
+			},
+		]
+	)
+
+	filtered = report.recent_changes(
+		start=(base_time - timedelta(days=2)).date().isoformat(),
+		end=base_time.date().isoformat(),
+		target_account="demo",
+	)
+	assert len(filtered) == 1
+	assert filtered[0]["username"] == "window"
+
+
+def test_compare_snapshots_returns_expected_diff():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	start_time = datetime(2025, 4, 1, 9, tzinfo=UTC)
+	end_time = datetime(2025, 4, 8, 21, tzinfo=UTC)
+
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="followers",
+		users=[{"pk": 1, "username": "alice"}, {"pk": 2, "username": "bob"}],
+		collected_at=start_time,
+	)
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="followers",
+		users=[{"pk": 2, "username": "bob"}, {"pk": 3, "username": "carol"}],
+		collected_at=end_time,
+	)
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="following",
+		users=[{"pk": 10, "username": "x"}],
+		collected_at=start_time,
+	)
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="following",
+		users=[{"pk": 10, "username": "x"}, {"pk": 11, "username": "y"}],
+		collected_at=end_time,
+	)
+
+	comparison = report.compare_snapshots(
+		target_account="demo",
+		start=start_time.date().isoformat(),
+		end=end_time.date().isoformat(),
+		limit=10,
+	)
+
+	assert comparison["available"] is True
+	followers_section = comparison["followers"]
+	assert followers_section["added_total"] == 1
+	assert followers_section["removed_total"] == 1
+	assert followers_section["added"][0]["username"] == "carol"
+	assert followers_section["removed"][0]["username"] == "alice"
+	assert followers_section["baseline"]["count"] == 2
+	assert followers_section["current"]["count"] == 2
+
+	following_section = comparison["following"]
+	assert following_section["added_total"] == 1
+	assert following_section["removed_total"] == 0
+	assert following_section["added"][0]["username"] == "y"
+
+
+def test_snapshot_history_returns_latest_entries():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	base_time = datetime(2025, 5, 1, 8, tzinfo=UTC)
+	for index in range(3):
+		storage.store_snapshot(
+			target_account="demo",
+			list_type="followers",
+			users=[{"pk": index, "username": f"user{index}"}],
+			collected_at=base_time + timedelta(days=index),
+		)
+	for index in range(2):
+		storage.store_snapshot(
+			target_account="demo",
+			list_type="following",
+			users=[{"pk": index, "username": f"follow{index}"}],
+			collected_at=base_time + timedelta(days=index),
+		)
+
+	history = report.snapshot_history(target_account="demo", limit=2)
+	assert len(history["followers"]) == 2
+	assert history["followers"][0]["count"] == 1
+	assert history["followers"][0]["collected_at"].startswith("2025-05-03")
+	assert len(history["following"]) == 2
+
+
 def test_follow_back_gaps_returns_expected_lists():
 	storage = MongoStorage()
 	report = ReportService(storage=storage)

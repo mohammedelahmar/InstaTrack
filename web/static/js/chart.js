@@ -200,6 +200,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	const filtersForm = document.querySelector(".filters");
 	const accountSelect = document.getElementById("account");
 	const daysSelect = document.getElementById("days");
+	const startDateInput = document.getElementById("start");
+	const endDateInput = document.getElementById("end");
 	const chartsRow = document.querySelector(".panel-row");
 	const toggleChartsBtn = document.getElementById("toggleChartsBtn");
 	const runSnapshotBtn = document.getElementById("runSnapshotBtn");
@@ -244,6 +246,8 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 		return filtersForm?.dataset.defaultDays ? parseInt(filtersForm.dataset.defaultDays, 10) : 7;
 	};
+	const getSelectedStart = () => startDateInput?.value || "";
+	const getSelectedEnd = () => endDateInput?.value || "";
 
 	const handleSnapshot = async () => {
 		showStatus("Capture en cours…", "info");
@@ -266,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!reportModal || !reportModalBody) {
 			return;
 		}
-		const { counts = {}, insights = {}, recent = [], totals = {}, gaps = {} } = payload;
+		const { counts = {}, insights = {}, recent = [], totals = {}, gaps = {}, comparison = {}, history = {} } = payload;
 		const countsList = Object.entries(counts)
 			.map(([key, value]) => `<li><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></li>`)
 			.join("");
@@ -317,6 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
 					`;
 				})
 				.join("");
+		const formatDateTime = (value) => (value ? escapeHtml(String(value).replace("T", " ")) : "—");
 		const gapsSection = `
 			<section>
 				<h4>Who Doesn’t Follow Back</h4>
@@ -332,6 +337,95 @@ document.addEventListener("DOMContentLoaded", () => {
 				</div>
 			</section>
 		`;
+		const renderComparisonUsers = (users) =>
+			users
+				.map(
+					(user) => `
+						<li>
+							<span>${escapeHtml(user.username || user.full_name || "—")}</span>
+							${user.full_name && user.username && user.full_name !== user.username ? `<strong>${escapeHtml(user.full_name)}</strong>` : ""}
+						</li>
+					`
+				)
+				.join("");
+		const renderComparisonSection = () => {
+			if (!comparison || !comparison.available) {
+				return "";
+			}
+			const listTypes = [
+				["followers", "Followers"],
+				["following", "Following"],
+			];
+			const columns = listTypes
+				.map(([key, label]) => {
+					const section = comparison[key] || {};
+					const baseline = section.baseline || {};
+					const current = section.current || {};
+					return `
+						<div>
+							<h5>${escapeHtml(label)}</h5>
+							<ul class="modal-list">
+								<li><span>Snapshot initial</span><strong>${formatDateTime(baseline.collected_at)}</strong></li>
+								<li><span>Compte initial</span><strong>${escapeHtml(baseline.count ?? 0)}</strong></li>
+								<li><span>Snapshot final</span><strong>${formatDateTime(current.collected_at)}</strong></li>
+								<li><span>Compte final</span><strong>${escapeHtml(current.count ?? 0)}</strong></li>
+							</ul>
+							<div class="modal-grid">
+								<div>
+									<h6>Ajouts (${escapeHtml(section.added_total ?? 0)})</h6>
+									<ul class="modal-list">${renderComparisonUsers(section.added || []) || "<li>Aucun ajout.</li>"}</ul>
+								</div>
+								<div>
+									<h6>Suppressions (${escapeHtml(section.removed_total ?? 0)})</h6>
+									<ul class="modal-list">${renderComparisonUsers(section.removed || []) || "<li>Aucune suppression.</li>"}</ul>
+								</div>
+							</div>
+						</div>
+					`;
+				})
+				.join("");
+			return `
+				<section>
+					<h4>Comparaison des snapshots</h4>
+					<div class="modal-grid">${columns}</div>
+				</section>
+			`;
+		};
+		const renderHistorySection = () => {
+			const followersHistory = Array.isArray(history.followers) ? history.followers : [];
+			const followingHistory = Array.isArray(history.following) ? history.following : [];
+			if (!followersHistory.length && !followingHistory.length) {
+				return "";
+			}
+			const buildList = (entries) =>
+				entries
+					.map(
+						(entry) => `
+							<li>
+								<span>${formatDateTime(entry.collected_at)}</span>
+								<strong>${escapeHtml(entry.count ?? 0)} comptes</strong>
+							</li>
+						`
+					)
+					.join("");
+			return `
+				<section>
+					<h4>Archives des snapshots</h4>
+					<div class="modal-grid">
+						<div>
+							<h5>Followers</h5>
+							<ul class="modal-list">${buildList(followersHistory) || "<li>Aucune archive.</li>"}</ul>
+						</div>
+						<div>
+							<h5>Following</h5>
+							<ul class="modal-list">${buildList(followingHistory) || "<li>Aucune archive.</li>"}</ul>
+						</div>
+					</div>
+				</section>
+			`;
+		};
+		const comparisonSection = renderComparisonSection();
+		const historySection = renderHistorySection();
 
 		reportModalBody.innerHTML = `
 			<section>
@@ -358,6 +452,8 @@ document.addEventListener("DOMContentLoaded", () => {
 				</div>
 			</section>
 			${gapsSection}
+			${comparisonSection}
+			${historySection}
 			<section>
 				<h4>Derniers événements (${recent.length})</h4>
 				<ul class="modal-list modal-list--scroll">${recentItems || "<li>Aucun événement.</li>"}</ul>
@@ -381,11 +477,19 @@ document.addEventListener("DOMContentLoaded", () => {
 			const params = new URLSearchParams();
 			const account = getSelectedAccount();
 			const days = getSelectedDays();
+			const start = getSelectedStart();
+			const end = getSelectedEnd();
 			if (account) {
 				params.set("account", account);
 			}
 			params.set("days", String(days));
 			params.set("preview_limit", "50");
+			if (start) {
+				params.set("start", start);
+			}
+			if (end) {
+				params.set("end", end);
+			}
 			const response = await fetch(`/api/report?${params.toString()}`);
 			const payload = await response.json();
 			if (!response.ok || payload.status !== "ok") {

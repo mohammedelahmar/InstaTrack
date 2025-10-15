@@ -23,7 +23,13 @@
 			<div class="header__meta">
 				<div>
 					<span class="meta-label">Période analysée</span>
-					<span class="meta-value">{{ selected_days }} jours</span>
+					<span class="meta-value">
+						{% if selected_start or selected_end %}
+							{{ selected_start or '—' }} → {{ selected_end or '—' }}
+						{% else %}
+							{{ selected_days }} jours
+						{% endif %}
+					</span>
 				</div>
 				<div>
 					<span class="meta-label">Dernière mise à jour</span>
@@ -35,7 +41,7 @@
 
 	<main class="content">
 		{% if accounts %}
-		<form class="filters" method="get" data-default-days="{{ selected_days }}">
+		<form class="filters" method="get" data-default-days="{{ selected_days }}" data-range-start="{{ selected_start }}" data-range-end="{{ selected_end }}">
 			<div class="field">
 				<label for="account">Compte suivi</label>
 				<select id="account" name="account">
@@ -52,12 +58,27 @@
 					{% endfor %}
 				</select>
 			</div>
+			<div class="field">
+				<label for="start">Date de début</label>
+				<input type="date" id="start" name="start" value="{{ selected_start }}">
+			</div>
+			<div class="field">
+				<label for="end">Date de fin</label>
+				<input type="date" id="end" name="end" value="{{ selected_end }}">
+			</div>
 			<button type="submit" class="btn btn--primary">Actualiser</button>
 			<a
 				class="btn btn--ghost"
-				href="{{ url_for('export_csv', account=default_account, days=selected_days) }}"
+				href="{{ url_for('export_csv', account=default_account, days=selected_days, start=selected_start if selected_start else None, end=selected_end if selected_end else None) }}"
 			>
 				Exporter CSV
+			</a>
+			<a
+				class="btn btn--ghost"
+				href="{{ url_for('dashboard', account=default_account, days=selected_days) }}"
+				id="resetRangeBtn"
+			>
+				Réinitialiser la plage
 			</a>
 		</form>
 		{% endif %}
@@ -200,6 +221,71 @@
 			</article>
 		</section>
 
+		<section class="panel comparison-panel">
+			<div class="panel-header">
+				<h2>Comparaison des snapshots</h2>
+				<p>
+					{% if selected_start or selected_end %}
+						Analyse du {{ selected_start or 'début' }} au {{ selected_end or 'fin' }}
+					{% else %}
+						Analyse sur {{ selected_days }} jours
+					{% endif %}
+				</p>
+			</div>
+			{% if comparison.available %}
+			<div class="comparison-columns">
+				{% for list_type in ['followers', 'following'] %}
+				{% set section = comparison[list_type] %}
+				<div class="comparison-column">
+					<h3>{{ 'Followers' if list_type == 'followers' else 'Following' }}</h3>
+					<div class="comparison-meta">
+						<div>
+							<span class="meta-label">Snapshot initial</span>
+							<span class="meta-value">{{ section.baseline.collected_at if section.baseline else '—' }}</span>
+							<span class="meta-sub">{{ section.baseline.count if section.baseline else 0 }} comptes</span>
+						</div>
+						<div>
+							<span class="meta-label">Snapshot final</span>
+							<span class="meta-value">{{ section.current.collected_at if section.current else '—' }}</span>
+							<span class="meta-sub">{{ section.current.count if section.current else 0 }} comptes</span>
+						</div>
+					</div>
+					<div class="comparison-lists">
+						<div>
+							<h4>Ajouts ({{ section.added_total }})</h4>
+							<ul class="change-list">
+								{% for user in section.added %}
+								<li>
+									<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
+									<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+								</li>
+								{% else %}
+								<li class="empty">Aucun ajout sur la période.</li>
+								{% endfor %}
+							</ul>
+						</div>
+						<div>
+							<h4>Suppressions ({{ section.removed_total }})</h4>
+							<ul class="change-list">
+								{% for user in section.removed %}
+								<li>
+									<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
+									<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+								</li>
+								{% else %}
+								<li class="empty">Aucune suppression sur la période.</li>
+								{% endfor %}
+							</ul>
+						</div>
+					</div>
+				</div>
+				{% endfor %}
+			</div>
+			{% else %}
+			<p class="empty">Aucun snapshot disponible pour cette plage. Lancez une capture pour construire l'historique.</p>
+			{% endif %}
+		</section>
+
 		<section class="panel followback-panel">
 			<div class="panel-header">
 				<h2>Who Doesn’t Follow Back 👀</h2>
@@ -252,6 +338,31 @@
 						{% endfor %}
 					</ul>
 				</div>
+			</div>
+		</section>
+
+		<section class="panel history-panel">
+			<div class="panel-header">
+				<h2>Archives des snapshots</h2>
+				<p>Liste des captures enregistrées pour la période sélectionnée</p>
+			</div>
+			<div class="history-columns">
+				{% for list_type in ['followers', 'following'] %}
+				{% set entries = history[list_type] %}
+				<div class="history-column">
+					<h3>{{ 'Followers' if list_type == 'followers' else 'Following' }}</h3>
+					<ul class="history-list">
+						{% for snapshot in entries %}
+						<li>
+							<span class="history-date">{{ snapshot.collected_at or '—' }}</span>
+							<span class="history-count">{{ snapshot.count }} comptes</span>
+						</li>
+						{% else %}
+						<li class="empty">Aucune archive disponible sur la période.</li>
+						{% endfor %}
+					</ul>
+				</div>
+				{% endfor %}
 			</div>
 		</section>
 

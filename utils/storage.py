@@ -111,6 +111,56 @@ class MongoStorage:
 		except StopIteration:
 			return None
 
+	def snapshot_history(
+		self,
+		*,
+		target_account: str,
+		list_type: str,
+		start: Optional[datetime] = None,
+		end: Optional[datetime] = None,
+		limit: Optional[int] = 20,
+	) -> List[Dict[str, Any]]:
+		query: Dict[str, Any] = {"target_account": target_account, "list_type": list_type}
+		if start or end:
+			time_filter: Dict[str, Any] = {}
+			if start:
+				time_filter["$gte"] = start
+			if end:
+				time_filter["$lte"] = end
+			query["collected_at"] = time_filter
+
+		cursor = self._collection(self.SNAPSHOTS_COLLECTION).find(query).sort("collected_at", -1)
+		if limit:
+			cursor = cursor.limit(limit)
+		return list(cursor)
+
+	def snapshot_at(
+		self,
+		*,
+		target_account: str,
+		list_type: str,
+		moment: datetime,
+		direction: str = "before",
+	) -> Optional[Dict[str, Any]]:
+		query: Dict[str, Any] = {"target_account": target_account, "list_type": list_type}
+		if direction == "after":
+			query["collected_at"] = {"$gte": moment}
+			sort_order = 1
+		else:
+			query["collected_at"] = {"$lte": moment}
+			sort_order = -1
+
+		cursor = (
+			self._collection(self.SNAPSHOTS_COLLECTION)
+			.find(query)
+			.sort("collected_at", sort_order)
+			.limit(1)
+		)
+		try:
+			return next(cursor)
+		except StopIteration:
+			return None
+
 	def store_changes(self, changes: Iterable[Dict[str, Any]]) -> int:
 		changes = list(changes)
 		if not changes:
@@ -124,13 +174,19 @@ class MongoStorage:
 		*,
 		target_account: Optional[str] = None,
 		since: Optional[datetime] = None,
+		until: Optional[datetime] = None,
 		limit: Optional[int] = None,
 	) -> List[Dict[str, Any]]:
 		query: Dict[str, Any] = {}
 		if target_account:
 			query["target_account"] = target_account
-		if since:
-			query["detected_at"] = {"$gte": since}
+		if since or until:
+			time_filter: Dict[str, Any] = {}
+			if since:
+				time_filter["$gte"] = since
+			if until:
+				time_filter["$lte"] = until
+			query["detected_at"] = time_filter
 
 		cursor = self._collection(self.CHANGES_COLLECTION).find(query).sort("detected_at", -1)
 		if limit:
