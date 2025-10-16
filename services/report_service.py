@@ -513,12 +513,8 @@ class ReportService:
 	) -> Dict[str, List[Dict[str, object]]]:
 		if not target_account:
 			return {"followers": [], "following": []}
-		apply_range = bool(start or end)
-		if apply_range:
-			start_dt, end_dt = self._resolve_range(days=365, start=start, end=end)
-		else:
-			start_dt = None
-			end_dt = None
+		start_dt, end_dt = self._resolve_range(days=365, start=start, end=end)
+		limit = max(1, limit)
 		result: Dict[str, List[Dict[str, object]]] = {}
 		for list_type in ("followers", "following"):
 			snapshots = self._storage.snapshot_history(
@@ -538,6 +534,46 @@ class ReportService:
 				)
 			result[list_type] = entries
 		return result
+
+	def followers_history(
+		self,
+		*,
+		target_account: Optional[str],
+		start: Optional[str | datetime] = None,
+		end: Optional[str | datetime] = None,
+		limit: int = 50,
+	) -> List[Dict[str, object]]:
+		if not target_account:
+			return []
+		start_dt, end_dt = self._resolve_range(days=365, start=start, end=end)
+		limit = max(1, limit)
+		snapshots = self._storage.snapshot_history(
+			target_account=target_account,
+			list_type="followers",
+			start=start_dt,
+			end=end_dt,
+			limit=limit,
+		)
+		history: List[Dict[str, object]] = []
+		for snapshot in snapshots:
+			users = snapshot.get("users", []) or []
+			sanitized_users = []
+			for user in users:
+				sanitized_users.append(
+					{
+						"pk": user.get("pk"),
+						"username": user.get("username"),
+						"full_name": user.get("full_name"),
+					}
+				)
+			history.append(
+				{
+					"collected_at": self._iso_or_none(snapshot.get("collected_at")),
+					"count": len(sanitized_users),
+					"users": sanitized_users,
+				}
+			)
+		return history
 
 	@staticmethod
 	def _iso_or_none(value: datetime | None) -> str | None:

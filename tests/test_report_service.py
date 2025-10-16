@@ -262,3 +262,32 @@ def test_follow_back_gaps_returns_expected_lists():
 	assert gaps["you_dont_follow_back"]["users"][0]["username"] == "bob"
 	assert gaps["updated_at"]["followers"] == now.isoformat()
 	assert gaps["updated_at"]["following"] == now.isoformat()
+
+
+def test_followers_history_returns_sanitized_snapshots():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	base_time = datetime(2025, 6, 1, 6, tzinfo=UTC)
+	for day in range(3):
+		storage.store_snapshot(
+			target_account="demo",
+			list_type="followers",
+			users=[
+				{"pk": 100 + day, "username": f"user{day}", "full_name": f"User {day}", "extra": "ignore"}
+			],
+			collected_at=base_time + timedelta(days=day),
+		)
+
+	history = report.followers_history(
+		target_account="demo",
+		start=(base_time + timedelta(days=1)).date().isoformat(),
+		end=(base_time + timedelta(days=2)).date().isoformat(),
+		limit=5,
+	)
+
+	assert len(history) == 2
+	assert history[0]["count"] == 1
+	assert [entry["collected_at"][:10] for entry in history] == ["2025-06-03", "2025-06-02"]
+	first_user = history[0]["users"][0]
+	assert set(first_user.keys()) == {"pk", "username", "full_name"}
+	assert first_user["username"] == "user2"
