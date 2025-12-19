@@ -66,8 +66,17 @@ class Settings:
 
 	target_accounts: List[str] = field(default_factory=lambda: _env_list("TARGET_ACCOUNTS"))
 
+	gemini_api_key: str | None = field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))
+	gemini_model_name: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash-latest"))
+	gemini_max_output_tokens: int = field(default_factory=lambda: int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "512")))
+	gemini_temperature: float = field(default_factory=lambda: float(os.getenv("GEMINI_TEMPERATURE", "0.4")))
+
 	scrape_hour_utc: int = field(default_factory=lambda: int(os.getenv("SCRAPE_HOUR_UTC", "3")))
 	scrape_minute_utc: int = field(default_factory=lambda: int(os.getenv("SCRAPE_MINUTE_UTC", "0")))
+
+	dashboard_auto_refresh_seconds: int = field(
+		default_factory=lambda: int(os.getenv("AUTO_REFRESH_INTERVAL_SECONDS", "0"))
+	)
 
 	min_request_delay: float = field(default_factory=lambda: float(os.getenv("MIN_REQUEST_DELAY", "2.5")))
 	max_request_delay: float = field(default_factory=lambda: float(os.getenv("MAX_REQUEST_DELAY", "5.0")))

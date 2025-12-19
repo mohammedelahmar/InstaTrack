@@ -7,9 +7,12 @@ InstaTrack est un outil Python qui automatise la récupération quotidienne des 
 - Authentification via un compte observateur (instagrapi) avec session persistée.
 - Sauvegarde des snapshots followers/following dans MongoDB et détection automatique des ajouts / suppressions.
 - Tableau de bord Flask avec graphiques (Chart.js) et export CSV des rapports.
+- Visualisation des réciprocités (followers mutuels vs unilatéraux) et comparaison followers/following.
 - Dashboard modernisé : sélecteur de période (7/14/30 jours), indicateurs "net", tops entrants/sortants et téléchargement CSV en un clic.
 - CLI unifiée pour lancer une collecte, afficher un rapport, démarrer l'UI ou planifier un suivi quotidien (APScheduler).
 - Journalisation centralisée et configuration par variables d'environnement (`.env`).
+- Page « Paramètres » pour gérer les comptes surveillés, les cookies session et l'intervalle de rafraîchissement automatique du dashboard.
+- Assistant IA (Gemini) intégré au dashboard pour répondre aux questions sur vos listes.
 
 ## 🚀 Prise en main
 
@@ -24,6 +27,8 @@ pip install -r requirements.txt
 	- Copier `.env.example` → `.env` et renseigner les identifiants du compte observateur, l'URI MongoDB et les comptes suivis (`TARGET_ACCOUNTS`).
 	- Le compte observateur doit suivre les comptes privés à surveiller.
 	- Astuce connexion: pour éviter les défis de sécurité Instagram, laissez la session se persister (ne mettez PAS `INSTAGRAM_DISABLE_SESSION=1`) ou renseignez `INSTAGRAM_SESSIONID` pour vous connecter via cookie.
+	- Facultatif: ajustez `AUTO_REFRESH_INTERVAL_SECONDS` pour recharger automatiquement le tableau de bord (0 = désactivé).
+	- Pour l'assistant IA, ajoutez `GEMINI_API_KEY=xxxxx` (et si besoin `GEMINI_MODEL_NAME`, `GEMINI_MAX_OUTPUT_TOKENS`, `GEMINI_TEMPERATURE`).
 
 4. **Lancer une collecte manuelle** :
 
@@ -45,9 +50,19 @@ L'application affiche :
 
 - Un récapitulatif des gains/pertes sur la période sélectionnée (7/14/30 jours).
 - Des graphiques séparés pour followers et following (ajouts, suppressions, net).
+- Deux jauges supplémentaires pour suivre les relations mutuelles vs unilatérales et comparer instantanément les volumes followers/following.
 - Des insights avancés : croissance moyenne, record de la période, série positive, tops entrées/sorties.
 - Un tableau chronologique des derniers changements et un export CSV directement depuis le dashboard.
 - Des actions rapides : masquage des graphiques, capture immédiate, aperçu de rapport et activation du scheduler.
+- Un accès direct à la page « Paramètres » pour ajouter/retirer des comptes, envoyer une demande de suivi aux comptes privés, fournir un session ID temporaire et définir l’intervalle de rafraîchissement automatique (minimum 30 s).
+- Une section « Assistant IA Gemini » pour interroger vos listes en français (ex: « Combien de followers ont un prénom féminin ? »).
+
+### 🤖 Assistant IA Gemini
+
+- Activez-le en ajoutant `GEMINI_API_KEY` dans `.env` (clé Google AI Studio).
+- Paramètres facultatifs: `GEMINI_MODEL_NAME` (par défaut `gemini-1.5-flash-latest`, avec repli automatique vers d'autres modèles compatibles), `GEMINI_MAX_OUTPUT_TOKENS`, `GEMINI_TEMPERATURE`.
+- L'assistant reçoit les listes complètes `followers` / `following` du compte sélectionné ainsi que les statistiques de réciprocité avant de répondre.
+- Les réponses sont formulées en français et rappelent les limites quand une question dépasse le périmètre des données disponibles.
 
 ## ⏰ Planification quotidienne
 

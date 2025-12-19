@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>InstaTrack · Paramètres</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+	<div class="gradient-bg" aria-hidden="true"></div>
+	<header class="header">
+		<div class="header__content">
+			<div>
+				<h1>Paramètres</h1>
+				<p>Configurez vos comptes suivis et les accès Instagram utilisés.</p>
+			</div>
+			<div class="header__meta header__meta--compact">
+				<a class="btn btn--ghost" href="{{ url_for('dashboard') }}">Retour au tableau de bord</a>
+			</div>
+		</div>
+	</header>
+
+	<main class="content settings-content">
+		<section class="settings-card">
+			<header class="settings-card__header">
+				<h2>Comptes surveillés</h2>
+				<p>Ajoutez ou supprimez des comptes cibles. Chaque nouveau compte est validé avant d'être suivi.</p>
+			</header>
+			<form id="accountForm" class="settings-form" autocomplete="off">
+				<label for="accountInput">Nom d'utilisateur Instagram</label>
+				<div class="input-row">
+					<input type="text" id="accountInput" placeholder="ex: mon_compte" required>
+					<button type="submit" class="btn btn--primary">Analyser</button>
+				</div>
+			</form>
+			<div id="accountResult" class="settings-result" hidden>
+				<h3 id="accountResultTitle"></h3>
+				<p id="accountResultDescription"></p>
+				<div id="accountResultActions" class="settings-actions"></div>
+				<form id="inlineSessionForm" class="settings-inline-form" hidden>
+					<label for="inlineSessionInput">Session ID Instagram</label>
+					<input type="text" id="inlineSessionInput" placeholder="Copiez ici la valeur sessionid">
+					<label class="checkbox">
+						<input type="checkbox" id="inlineSessionPersist">
+						Conserver ce session ID dans le fichier .env
+					</label>
+					<div class="settings-inline-actions">
+						<button type="submit" class="btn btn--primary">Enregistrer et ajouter</button>
+						<button type="button" class="btn btn--ghost" id="inlineSessionCancel">Annuler</button>
+					</div>
+				</form>
+			</div>
+			<ul id="accountsList" class="settings-chips" aria-live="polite"></ul>
+		</section>
+
+		<section class="settings-card">
+			<header class="settings-card__header">
+				<h2>Session Instagram</h2>
+				<p>Mettez à jour le cookie sessionid utilisé pour authentifier l'application.</p>
+			</header>
+			<p class="settings-hint">Session actuelle : <span id="sessionMask">{{ settings.session_mask or '—' }}</span></p>
+			<form id="sessionForm" class="settings-form">
+				<label for="sessionInput">Nouveau session ID</label>
+				<textarea id="sessionInput" rows="3" placeholder="Copiez ici la valeur sessionid"></textarea>
+				<label class="checkbox">
+					<input type="checkbox" id="sessionPersist" checked>
+					Sauvegarder dans le fichier .env (recommandé)
+				</label>
+				<div class="settings-inline-actions">
+					<button type="submit" class="btn btn--primary">Mettre à jour</button>
+					<button type="button" id="sessionClear" class="btn btn--ghost">Supprimer la session</button>
+				</div>
+			</form>
+			<p class="settings-note">Astuce : décochez la sauvegarde pour un usage temporaire (mode session courte).</p>
+		</section>
+
+		<section class="settings-card">
+			<header class="settings-card__header">
+				<h2>Rafraîchissement automatique</h2>
+				<p>Définissez l'intervalle de rafraîchissement automatique du tableau de bord.</p>
+			</header>
+			<p class="settings-hint">Valeur actuelle : <span id="autoRefreshLabel"></span></p>
+			<form id="autoRefreshForm" class="settings-form">
+				<label for="autoRefreshMinutes">Intervalle (minutes)</label>
+				<div class="input-row">
+					<input type="number" id="autoRefreshMinutes" min="0" step="0.5">
+					<button type="submit" class="btn btn--primary">Enregistrer</button>
+				</div>
+			</form>
+			<p class="settings-note">Mettre 0 pour désactiver. Minimum 0,5 minute (30 secondes) lorsque activé.</p>
+		</section>
+	</main>
+
+	<div id="settingsStatus" class="action-status" role="status" aria-live="polite" hidden></div>
+
+	<script defer src="{{ url_for('static', filename='js/settings.js') }}" data-settings='{{ settings | tojson }}'></script>
+</body>
+</html>

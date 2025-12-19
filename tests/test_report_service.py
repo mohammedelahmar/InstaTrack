@@ -291,3 +291,40 @@ def test_followers_history_returns_sanitized_snapshots():
 	first_user = history[0]["users"][0]
 	assert set(first_user.keys()) == {"pk", "username", "full_name"}
 	assert first_user["username"] == "user2"
+
+
+def test_relationship_breakdown_segments_users():
+	storage = MongoStorage()
+	report = ReportService(storage=storage)
+	collected_at = datetime(2025, 7, 1, 12, tzinfo=UTC)
+
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="followers",
+		users=[
+			{"pk": 1, "username": "alice"},
+			{"pk": 2, "username": "bob"},
+		],
+		collected_at=collected_at,
+	)
+	storage.store_snapshot(
+		target_account="demo",
+		list_type="following",
+		users=[
+			{"pk": 1, "username": "alice"},
+			{"pk": 3, "username": "carol"},
+		],
+		collected_at=collected_at,
+	)
+
+	breakdown = report.relationship_breakdown(target_account="demo", limit=5)
+
+	assert breakdown["followers_total"] == 2
+	assert breakdown["following_total"] == 2
+	assert breakdown["mutual_total"] == 1
+	assert breakdown["only_followers_total"] == 1
+	assert breakdown["only_following_total"] == 1
+	assert breakdown["samples"]["mutual"][0]["username"] == "alice"
+	assert breakdown["samples"]["only_followers"][0]["username"] == "bob"
+	assert breakdown["samples"]["only_following"][0]["username"] == "carol"
+	assert breakdown["updated_at"]["followers"] == collected_at.isoformat()

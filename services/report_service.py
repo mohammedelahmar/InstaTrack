@@ -163,20 +163,8 @@ class ReportService:
 		followers_users = followers_snapshot.get("users", []) if followers_snapshot else []
 		following_users = following_snapshot.get("users", []) if following_snapshot else []
 
-		def _user_key(user: Dict[str, str]) -> str:
-			pk = user.get("pk")
-			if pk is not None:
-				return str(pk)
-			username = user.get("username")
-			if username:
-				return f"username:{username.lower()}"
-			full_name = user.get("full_name")
-			if full_name:
-				return f"full:{full_name.lower()}"
-			return repr(sorted(user.items()))
-
-		followers_map = {_user_key(user): user for user in followers_users}
-		following_map = {_user_key(user): user for user in following_users}
+		followers_map = {self._user_key(user): user for user in followers_users}
+		following_map = {self._user_key(user): user for user in following_users}
 
 		def _sort_key(user: Dict[str, str]) -> tuple[str, str]:
 			username = user.get("username") or ""
@@ -217,6 +205,81 @@ class ReportService:
 		}
 
 		return response
+
+	def relationship_breakdown(
+		self,
+		*,
+		target_account: Optional[str] = None,
+		limit: int = 20,
+	) -> Dict[str, object]:
+		if not target_account:
+			return {
+				"followers_total": 0,
+				"following_total": 0,
+				"mutual_total": 0,
+				"only_followers_total": 0,
+				"only_following_total": 0,
+				"mutual_ratio": 0.0,
+				"updated_at": {"followers": None, "following": None},
+				"samples": {
+					"mutual": [],
+					"only_followers": [],
+					"only_following": [],
+				},
+			}
+
+		followers_snapshot = self._storage.latest_snapshot(target_account, "followers")
+		following_snapshot = self._storage.latest_snapshot(target_account, "following")
+
+		followers_users = followers_snapshot.get("users", []) if followers_snapshot else []
+		following_users = following_snapshot.get("users", []) if following_snapshot else []
+
+		followers_map = {self._user_key(user): self._sanitize_user(user) for user in followers_users}
+		following_map = {self._user_key(user): self._sanitize_user(user) for user in following_users}
+
+		followers_keys = set(followers_map.keys())
+		following_keys = set(following_map.keys())
+
+		mutual_keys = followers_keys & following_keys
+		only_followers_keys = followers_keys - following_keys
+		only_following_keys = following_keys - followers_keys
+
+		mutual_total = len(mutual_keys)
+		followers_total = len(followers_users)
+		following_total = len(following_users)
+		only_followers_total = len(only_followers_keys)
+		only_following_total = len(only_following_keys)
+
+		limit = max(1, limit)
+
+		def _sample(keys: set[str], source: Dict[str, Dict[str, object]]) -> List[Dict[str, object]]:
+			sorted_users = sorted((source[key] for key in keys), key=lambda user: (
+				(user.get("username") or "").casefold(),
+				(user.get("full_name") or "").casefold(),
+			))
+			return sorted_users[:limit]
+
+		updated_at = {
+			"followers": self._iso_or_none(followers_snapshot.get("collected_at") if followers_snapshot else None),
+			"following": self._iso_or_none(following_snapshot.get("collected_at") if following_snapshot else None),
+		}
+
+		mutual_ratio = round(mutual_total / followers_total, 4) if followers_total else 0.0
+
+		return {
+			"followers_total": followers_total,
+			"following_total": following_total,
+			"mutual_total": mutual_total,
+			"only_followers_total": only_followers_total,
+			"only_following_total": only_following_total,
+			"mutual_ratio": mutual_ratio,
+			"updated_at": updated_at,
+			"samples": {
+				"mutual": _sample(mutual_keys, followers_map),
+				"only_followers": _sample(only_followers_keys, followers_map),
+				"only_following": _sample(only_following_keys, following_map),
+			},
+		}
 
 	def insights(
 		self,
@@ -353,6 +416,28 @@ class ReportService:
 		if value.tzinfo is None:
 			value = value.replace(tzinfo=UTC)
 		return value.isoformat()
+
+	@staticmethod
+	def _user_key(user: Dict[str, object]) -> str:
+		pk = user.get("pk")
+		if pk is not None:
+			return str(pk)
+		username = user.get("username")
+		if isinstance(username, str) and username:
+			return f"username:{username.lower()}"
+		full_name = user.get("full_name")
+		if isinstance(full_name, str) and full_name:
+			return f"full:{full_name.lower()}"
+		return repr(sorted(user.items()))
+
+	@staticmethod
+	def _sanitize_user(user: Dict[str, object]) -> Dict[str, object]:
+		return {
+			"pk": user.get("pk"),
+			"username": user.get("username"),
+			"full_name": user.get("full_name"),
+			"is_private": user.get("is_private"),
+		}
 
 	@staticmethod
 	def _parse_date(value: str, *, end_of_day: bool = False) -> Optional[datetime]:
@@ -574,14 +659,5 @@ class ReportService:
 				}
 			)
 		return history
-
-	@staticmethod
-	def _iso_or_none(value: datetime | None) -> str | None:
-		if value is None:
-			return None
-		if value.tzinfo is None:
-			value = value.replace(tzinfo=UTC)
-		return value.isoformat()
-
 
 report_service = ReportService()

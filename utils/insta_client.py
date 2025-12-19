@@ -215,8 +215,12 @@ class InstaClient:
 		if self._logged_in:
 			return
 
+		session_attempted = False
+		session_error: Exception | None = None
+
 		# If a raw sessionid cookie is provided, prefer it to avoid challenges
 		if settings.instagram_sessionid:
+			session_attempted = True
 			for attempt in range(1, settings.max_retries + 1):
 				try:
 					self._client.login_by_sessionid(settings.instagram_sessionid)
@@ -224,24 +228,45 @@ class InstaClient:
 					self._logged_in = True
 					logger.info("Authenticated with Instagram via sessionid")
 					return
-				except ClientError as exc:
-					logger.error(
-						"Instagram sessionid login failed (attempt %s/%s): %s",
-						attempt,
-						settings.max_retries,
-						exc,
-					)
-					if attempt >= settings.max_retries:
-						raise
-					time.sleep(settings.retry_backoff_seconds * attempt)
-
-		if not settings.instagram_username or not settings.instagram_password:
-			raise RuntimeError("Instagram credentials are not configured (username/password or INSTAGRAM_SESSIONID)")
+				except Exception as exc:  # pragma: no cover - broad to catch instagrapi regressions
+					session_error = exc
+					if isinstance(exc, ClientError):
+						logger.error(
+							"Instagram sessionid login failed (attempt %s/%s): %s",
+							attempt,
+							settings.max_retries,
+							exc,
+						)
+					else:
+						logger.exception(
+							"Unexpected error during Instagram sessionid login (attempt %s/%s)",
+							attempt,
+							settings.max_retries,
+						)
+					if attempt < settings.max_retries:
+						time.sleep(settings.retry_backoff_seconds * attempt)
+					else:
+						logger.warning(
+							"Instagram sessionid login exhausted %s attempts; exploring fallbacks.",
+							settings.max_retries,
+						)
 
 		if self._load_session():
 			return
 
-		self._login_with_credentials()
+		if settings.instagram_username and settings.instagram_password:
+			if session_attempted and session_error:
+				logger.info("Instagram sessionid login failed; falling back to username/password authentication")
+			self._login_with_credentials()
+			return
+
+		if session_attempted:
+			message = (
+				"Le cookie INSTAGRAM_SESSIONID est invalide ou expiré. Fournissez un nouveau cookie ou configurez INSTAGRAM_USERNAME/PASSWORD."
+			)
+			raise ClientLoginRequired(message) from session_error
+
+		raise RuntimeError("Instagram credentials are not configured (username/password or INSTAGRAM_SESSIONID)")
 
 	def _ensure_login(self) -> None:
 		if not self._logged_in:
@@ -285,6 +310,73 @@ class InstaClient:
 		followers = self.fetch_followers(username)
 		following = self.fetch_following(username)
 		return followers, following
+
+	def get_user_profile(self, username: str) -> Dict[str, object]:
+		self._ensure_login()
+		retries = settings.max_retries or 1
+		last_error: ClientError | None = None
+		for attempt in range(1, retries + 1):
+			try:
+				info = self._client.user_info_by_username(username)
+				if hasattr(info, "model_dump"):
+					data = info.model_dump()
+				elif hasattr(info, "dict"):
+					data = info.dict()
+				else:
+					data = {
+						"pk": getattr(info, "pk", None),
+						"username": getattr(info, "username", username),
+						"full_name": getattr(info, "full_name", ""),
+						"is_private": getattr(info, "is_private", False),
+						"is_verified": getattr(info, "is_verified", False),
+					}
+				data.setdefault("pk", getattr(info, "pk", None))
+				data.setdefault("username", getattr(info, "username", username))
+				data.setdefault("full_name", getattr(info, "full_name", ""))
+				return data
+			except ClientError as exc:
+				last_error = exc
+				logger.warning(
+					"Lecture du profil %s échouée (tentative %s/%s): %s",
+					username,
+					attempt,
+					retries,
+					exc,
+				)
+				if attempt >= retries:
+					raise
+				time.sleep(settings.retry_backoff_seconds * attempt)
+		if last_error:
+			raise last_error
+		raise RuntimeError("Impossible de récupérer le profil Instagram")
+
+	def send_follow_request(self, username: str) -> Dict[str, object]:
+		self._ensure_login()
+		retries = settings.max_retries or 1
+		last_error: ClientError | None = None
+		for attempt in range(1, retries + 1):
+			try:
+				user_id = self._client.user_id_from_username(username)
+				result = self._client.friendships_create(user_id)
+				logger.info("Demande de suivi envoyée à %s", username)
+				if isinstance(result, dict):
+					return result
+				return {"status": "ok", "result": result}
+			except ClientError as exc:
+				last_error = exc
+				logger.warning(
+					"Demande de suivi échouée pour %s (tentative %s/%s): %s",
+					username,
+					attempt,
+					retries,
+					exc,
+				)
+				if attempt >= retries:
+					raise
+				time.sleep(settings.retry_backoff_seconds * attempt)
+		if last_error:
+			raise last_error
+		raise RuntimeError("Demande de suivi impossible")
 
 	def close(self) -> None:
 		if self._logged_in:

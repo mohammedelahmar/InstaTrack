@@ -6,11 +6,16 @@
 	<title>InstaTrack · Tableau de bord</title>
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 	<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-	<script
-		defer
-		src="{{ url_for('static', filename='js/chart.js') }}"
-		data-daily="{{ daily | tojson }}"
-	></script>
+	<script id="dashboard-config" type="application/json">
+		{{ {
+			"daily": daily,
+			"relationships": relationships,
+			"auto_refresh_seconds": auto_refresh_seconds,
+			"default_account": default_account or "",
+			"ai_enabled": 1 if ai_enabled else 0,
+		} | tojson }}
+	</script>
+	<script defer src="{{ url_for('static', filename='js/chart.js') }}"></script>
 </head>
 <body>
 	<div class="gradient-bg" aria-hidden="true"></div>
@@ -96,6 +101,9 @@
 			<button type="button" class="btn btn--ghost" id="startScheduleBtn">
 				Activer la planification
 			</button>
+			<a class="btn btn--ghost" href="{{ url_for('settings_page') }}">
+				Paramètres
+			</a>
 		</section>
 
 		<div id="actionStatus" class="action-status" role="status" aria-live="polite" hidden></div>
@@ -147,6 +155,23 @@
 					<p>Evolution des comptes suivis</p>
 				</div>
 				<canvas id="followingChart"></canvas>
+			</article>
+		</section>
+
+		<section class="panel-row panel-row--relationships">
+			<article class="panel mini-panel">
+				<div class="panel-header">
+					<h2>Relations followers</h2>
+					<p>Mutuels vs unilatéraux</p>
+				</div>
+				<canvas id="relationshipChart"></canvas>
+			</article>
+			<article class="panel mini-panel">
+				<div class="panel-header">
+					<h2>Followers vs Following</h2>
+					<p>Comparaison instantanée</p>
+				</div>
+				<canvas id="totalsChart"></canvas>
 			</article>
 		</section>
 
@@ -339,6 +364,35 @@
 					</ul>
 				</div>
 			</div>
+		</section>
+
+		<section class="panel ai-panel" id="aiAssistant">
+			<div class="panel-header">
+				<h2>Assistant IA Gemini</h2>
+				<p>Posez une question sur vos followers et l'IA répond avec les données InstaTrack.</p>
+			</div>
+			{% if ai_enabled %}
+			<form id="aiChatForm" class="ai-form">
+				<label for="aiQuestion" class="sr-only">Question</label>
+				<textarea
+					id="aiQuestion"
+					name="question"
+					rows="3"
+					placeholder="Ex: Combien de followers ont un prénom féminin ?"
+					autocomplete="off"
+				></textarea>
+				<div class="ai-form__footer">
+					<span id="aiStatus" class="ai-status" hidden></span>
+					<button type="submit" class="btn btn--primary">Envoyer</button>
+				</div>
+			</form>
+			<div id="aiTranscript" class="ai-transcript" aria-live="polite"></div>
+			{% else %}
+			<div class="ai-disabled">
+				<p>Ajoutez une variable <strong>GEMINI_API_KEY</strong> à votre fichier .env pour activer le chat IA.</p>
+				<a class="btn btn--ghost" href="{{ url_for('settings_page') }}">Ouvrir les paramètres</a>
+			</div>
+			{% endif %}
 		</section>
 
 		<section class="panel history-panel">

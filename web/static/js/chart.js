@@ -1,7 +1,35 @@
 const scriptElement = document.currentScript;
-let dailyData = [];
+const configElement = document.getElementById("dashboard-config");
 
-if (scriptElement) {
+let dailyData = [];
+let autoRefreshSeconds = 0;
+let relationshipsData = {};
+let defaultAccount = "";
+let aiEnabled = false;
+let dashboardConfig = null;
+
+if (configElement && configElement.textContent) {
+	try {
+		dashboardConfig = JSON.parse(configElement.textContent);
+	} catch (error) {
+		console.error("Unable to parse dashboard config", error);
+	}
+}
+
+const getConfigValue = (key, fallback) => {
+	if (dashboardConfig && Object.prototype.hasOwnProperty.call(dashboardConfig, key)) {
+		return dashboardConfig[key];
+	}
+	return fallback;
+};
+
+dailyData = getConfigValue("daily", []);
+autoRefreshSeconds = Number(getConfigValue("auto_refresh_seconds", 0)) || 0;
+relationshipsData = getConfigValue("relationships", {});
+defaultAccount = getConfigValue("default_account", "") || "";
+aiEnabled = Boolean(getConfigValue("ai_enabled", 0));
+
+if (!dashboardConfig && scriptElement) {
 	const dataAttribute = scriptElement.dataset.daily;
 	if (dataAttribute) {
 		try {
@@ -10,6 +38,27 @@ if (scriptElement) {
 			console.error("Unable to parse daily data", error);
 		}
 	}
+	const autoRefreshAttribute = scriptElement.dataset.autoRefresh;
+	if (autoRefreshAttribute) {
+		const parsed = Number(autoRefreshAttribute);
+		if (!Number.isNaN(parsed)) {
+			autoRefreshSeconds = parsed;
+		}
+	}
+	const relationshipsAttribute = scriptElement.dataset.relationships;
+	if (relationshipsAttribute) {
+		try {
+			relationshipsData = JSON.parse(relationshipsAttribute);
+		} catch (error) {
+			console.error("Unable to parse relationships data", error);
+		}
+	}
+	defaultAccount = scriptElement.dataset.defaultAccount || defaultAccount;
+	aiEnabled = scriptElement.dataset.aiEnabled === "1" ? true : aiEnabled;
+}
+
+if (typeof relationshipsData !== "object" || relationshipsData === null) {
+	relationshipsData = {};
 }
 
 if (!Array.isArray(dailyData)) {
@@ -196,6 +245,79 @@ document.addEventListener("DOMContentLoaded", () => {
 		},
 	]);
 
+	const buildRelationshipChart = () => {
+		const canvas = document.getElementById("relationshipChart");
+		if (!canvas || typeof Chart === "undefined") {
+			return;
+		}
+		const mutual = relationshipsData.mutual_total || 0;
+		const onlyFollowers = relationshipsData.only_followers_total || 0;
+		const onlyFollowing = relationshipsData.only_following_total || 0;
+		return new Chart(canvas, {
+			type: "doughnut",
+			data: {
+				labels: ["Mutuels", "Followers uniquement", "Following uniquement"],
+				datasets: [
+					{
+						label: "Répartition",
+						data: [mutual, onlyFollowers, onlyFollowing],
+						backgroundColor: ["#34d399", "#38bdf8", "#fbbf24"],
+						borderColor: "rgba(15, 23, 42, 0.9)",
+						borderWidth: 2,
+					},
+				],
+			},
+			options: {
+				plugins: {
+					legend: {
+						position: "bottom",
+					},
+				},
+			},
+		});
+	};
+
+	const buildTotalsChart = () => {
+		const canvas = document.getElementById("totalsChart");
+		if (!canvas || typeof Chart === "undefined") {
+			return;
+		}
+		const followersTotal = relationshipsData.followers_total || 0;
+		const followingTotal = relationshipsData.following_total || 0;
+		return new Chart(canvas, {
+			type: "bar",
+			data: {
+				labels: ["Followers", "Following"],
+				datasets: [
+					{
+						label: "Comptes",
+						data: [followersTotal, followingTotal],
+						backgroundColor: ["rgba(56, 189, 248, 0.6)", "rgba(99, 102, 241, 0.6)"],
+						borderRadius: 12,
+					},
+				],
+			},
+			options: {
+				indexAxis: "y",
+				plugins: {
+					legend: { display: false },
+				},
+				scales: {
+					x: {
+						beginAtZero: true,
+						grid: { color: "rgba(148, 163, 184, 0.15)" },
+					},
+					y: {
+						grid: { display: false },
+					},
+				},
+			},
+		});
+	};
+
+	buildRelationshipChart();
+	buildTotalsChart();
+
 	const statusElement = document.getElementById("actionStatus");
 	const filtersForm = document.querySelector(".filters");
 	const accountSelect = document.getElementById("account");
@@ -209,6 +331,10 @@ document.addEventListener("DOMContentLoaded", () => {
 	const startScheduleBtn = document.getElementById("startScheduleBtn");
 	const reportModal = document.getElementById("reportModal");
 	const reportModalBody = document.getElementById("reportModalBody");
+	const aiForm = document.getElementById("aiChatForm");
+	const aiQuestionInput = document.getElementById("aiQuestion");
+	const aiTranscript = document.getElementById("aiTranscript");
+	const aiStatus = document.getElementById("aiStatus");
 
 	const showStatus = (message, variant = "info") => {
 		if (!statusElement) {
@@ -248,6 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	};
 	const getSelectedStart = () => startDateInput?.value || "";
 	const getSelectedEnd = () => endDateInput?.value || "";
+	const getActiveAccount = () => getSelectedAccount() || defaultAccount || "";
 
 	const handleSnapshot = async () => {
 		showStatus("Capture en cours…", "info");
@@ -265,6 +392,75 @@ document.addEventListener("DOMContentLoaded", () => {
 			showStatus(error.message || "Impossible de lancer la capture", "error");
 		}
 	};
+
+	const setAiStatus = (message, variant = "info") => {
+		if (!aiStatus) {
+			return;
+		}
+		aiStatus.textContent = message;
+		aiStatus.dataset.variant = variant;
+		aiStatus.hidden = !message;
+	};
+
+	const appendBubble = (message, role) => {
+		if (!aiTranscript) {
+			return null;
+		}
+		const bubble = document.createElement("div");
+		bubble.className = `ai-bubble ai-bubble--${role}`;
+		bubble.textContent = message;
+		aiTranscript.appendChild(bubble);
+		aiTranscript.scrollTop = aiTranscript.scrollHeight;
+		return bubble;
+	};
+
+	const handleAiSubmit = async (event) => {
+		event.preventDefault();
+		if (!aiEnabled) {
+			return;
+		}
+		const question = aiQuestionInput?.value.trim();
+		if (!question) {
+			setAiStatus("Posez une question avant d'envoyer.", "error");
+			return;
+		}
+		const account = getActiveAccount();
+		if (!account) {
+			setAiStatus("Sélectionnez un compte pour interroger l'IA.", "error");
+			return;
+		}
+		setAiStatus("Analyse en cours…", "info");
+		appendBubble(question, "user");
+		const placeholder = appendBubble("✳️ L'assistant réfléchit…", "assistant");
+		try {
+			const response = await fetch("/api/ai/chat", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ account, question }),
+			});
+			const payload = await response.json();
+			if (!response.ok) {
+				throw new Error(payload.message || "Impossible d'obtenir une réponse.");
+			}
+			if (placeholder) {
+				placeholder.textContent = payload.answer || "Réponse vide.";
+			}
+			setAiStatus("Réponse générée.", "success");
+			if (aiQuestionInput) {
+				aiQuestionInput.value = "";
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Erreur IA inattendue.";
+			if (placeholder) {
+				placeholder.textContent = `❌ ${message}`;
+			}
+			setAiStatus(message, "error");
+		}
+	};
+
+	if (aiForm && aiEnabled) {
+		aiForm.addEventListener("submit", handleAiSubmit);
+	}
 
 	const renderReportModal = (payload) => {
 		if (!reportModal || !reportModalBody) {
@@ -548,4 +744,30 @@ document.addEventListener("DOMContentLoaded", () => {
 			}
 		});
 	}
+
+	const scheduleAutoRefresh = () => {
+		if (!autoRefreshSeconds || autoRefreshSeconds < 30) {
+			return;
+		}
+		const formatDelay = () => {
+			if (autoRefreshSeconds < 60) {
+				return `${autoRefreshSeconds} s`;
+			}
+			const minutes = autoRefreshSeconds / 60;
+			if (minutes >= 120) {
+				const hours = minutes / 60;
+				return `${hours.toFixed(hours % 1 === 0 ? 0 : 1)} h`;
+			}
+			return `${minutes.toFixed(minutes % 1 === 0 ? 0 : 1)} min`;
+		};
+		if (statusElement && statusElement.hidden) {
+			showStatus(`Rafraîchissement automatique dans ${formatDelay()}.`, "info");
+			statusElement.dataset.autorefresh = "true";
+		}
+		setTimeout(() => {
+			window.location.reload();
+		}, autoRefreshSeconds * 1000);
+	};
+
+	scheduleAutoRefresh();
 });
