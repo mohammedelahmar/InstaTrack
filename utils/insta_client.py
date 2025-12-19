@@ -285,10 +285,24 @@ class InstaClient:
 			"following": self._client.user_following,
 		}[relation]
 
+		# instagrapi caches relationship lists in-memory; force a fresh fetch each time so
+		# successive "Lancer une capture" calls see new followers/following without
+		# restarting the app.
+		try:
+			cache = getattr(self._client, "cache", None)
+			if cache and hasattr(cache, "clear"):
+				cache.clear()
+		except Exception:  # pragma: no cover - best effort cache reset
+			logger.debug("Failed to clear instagrapi cache before fetch", exc_info=True)
+
 		for attempt in range(1, settings.max_retries + 1):
 			try:
 				user_id = self._client.user_id_from_username(username)
-				users = fetcher(user_id)
+				try:
+					users = fetcher(user_id, use_cache=False)
+				except TypeError:
+					# Older instagrapi versions may not support use_cache; fall back to default call.
+					users = fetcher(user_id)
 				logger.info("Fetched %s %s", len(users), relation)
 				return _simplify_users(users)
 			except ClientError as exc:
