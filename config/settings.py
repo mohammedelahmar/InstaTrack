@@ -65,10 +65,11 @@ class Settings:
 	instagram_disable_session: bool = field(default_factory=lambda: _env_bool("INSTAGRAM_DISABLE_SESSION"))
 
 	target_accounts: List[str] = field(default_factory=lambda: _env_list("TARGET_ACCOUNTS"))
+	discord_webhook_url: str | None = field(default_factory=lambda: os.getenv("DISCORD_WEBHOOK_URL"))
 
 	gemini_api_key: str | None = field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))
 	gemini_model_name: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash-latest"))
-	gemini_max_output_tokens: int = field(default_factory=lambda: int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "512")))
+	gemini_max_output_tokens: int = field(default_factory=lambda: int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "2048")))
 	gemini_temperature: float = field(default_factory=lambda: float(os.getenv("GEMINI_TEMPERATURE", "0.4")))
 
 	scrape_hour_utc: int = field(default_factory=lambda: int(os.getenv("SCRAPE_HOUR_UTC", "3")))

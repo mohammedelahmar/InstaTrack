@@ -7,7 +7,10 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional
 
-import google.generativeai as genai  # type: ignore[import]
+try:
+	import google.generativeai as genai  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+	genai = None  # type: ignore[assignment]
 
 try:  # pragma: no cover - optional typing aid when google.api_core is available
 	google_exceptions = importlib.import_module("google.api_core.exceptions")
@@ -41,16 +44,18 @@ class AIChatService:
 		reports: ReportService | None = None,
 		api_key: Optional[str] = None,
 		model_name: Optional[str] = None,
-		model_factory: Callable[[str], genai.GenerativeModel] | None = None,
+		model_factory: Callable[[str], Any] | None = None,
 	) -> None:
 		self._storage = storage or default_storage
 		self._reports = reports or default_report_service
 		self._api_key = api_key or settings.gemini_api_key
 		self._model_name = model_name or settings.gemini_model_name
-		self._max_output_tokens = settings.gemini_max_output_tokens
+		# Force a higher limit if the setting is too low (e.g. from old .env)
+		configured_tokens = settings.gemini_max_output_tokens
+		self._max_output_tokens = max(configured_tokens, 4096)
 		self._temperature = settings.gemini_temperature
 		self._model_factory = model_factory
-		self._model: genai.GenerativeModel | None = None
+		self._model: Any = None
 		self._configured = False
 
 	def answer_question(self, *, target_account: Optional[str], question: str) -> Dict[str, object]:
@@ -73,10 +78,36 @@ class AIChatService:
 
 		relationships = self._reports.relationship_breakdown(target_account=target_account, limit=100)
 
+		# 1. Fetch Context: Trends (last 14 days)
+		daily_stats = self._reports.daily_summary(
+			days=14,
+			target_account=target_account,
+		)
+
+		# 2. Fetch Context: Recent Changes (last 14 days)
+		recent_changes = self._reports.recent_changes(
+			days=14,
+			target_account=target_account,
+			limit=100,
+		)
+		
+		# 3. Optimize Payload (Token Limits)
+		MAX_LIST_SIZE = 1500
+		truncated_followers = followers_payload[:MAX_LIST_SIZE]
+		truncated_following = following_payload[:MAX_LIST_SIZE]
+
 		dataset = {
 			"target_account": target_account,
-			"followers": followers_payload,
-			"following": following_payload,
+			"context": {
+				"generated_at": "Now",
+				"followers_count": len(followers_payload),
+				"following_count": len(following_payload),
+				"is_truncated": len(followers_payload) > MAX_LIST_SIZE,
+			},
+			"trends_last_14_days": daily_stats,
+			"recent_events": recent_changes,
+			"followers_sample": truncated_followers,
+			"following_sample": truncated_following,
 			"statistics": {
 				"followers_total": relationships.get("followers_total", len(followers_payload)),
 				"following_total": relationships.get("following_total", len(following_payload)),
@@ -116,10 +147,14 @@ class AIChatService:
 	def _call_model(self, question: str, dataset: Dict[str, object]) -> tuple[str, Dict[str, int]]:
 		dataset_json = json.dumps(dataset, ensure_ascii=False)
 		system_prompt = (
-			"Tu es un analyste Instagram pour InstaTrack. Réponds en français, de façon concise,"
-			" en citant des chiffres quand c'est pertinent, et rappelle tes limites si la question"
-			" sort du périmètre des données fournies. Utilise uniquement les informations"
-			" contenues dans le JSON suivant."
+			"Tu es un analyste Instagram pour InstaTrack. Réponds en français. "
+			"Sois direct et précis. Ne commence PAS tes phrases par 'En tant qu'analyste...'. "
+			"Utilise les données fournies dans le JSON :"
+			"1. 'trends_last_14_days' pour l'évolution."
+			"2. 'recent_events' pour voir qui a follow/unfollow récemment."
+			"3. 'followers_sample' et 'following_sample' pour analyser les listes actuelles (noms, etc)."
+			"Si la liste est tronquée (is_truncated=true), précise-le."
+			"Utilise le Markdown pour formater ta réponse (gras pour les chiffres, listes à puces pour les énumérations)."
 		)
 		full_prompt = f"{system_prompt}\n\nQuestion: {question}\n\nDonnées: {dataset_json}"
 
@@ -169,12 +204,16 @@ class AIChatService:
 
 		raise AIChatError("Impossible de contacter l'API Gemini. Vérifiez votre clé et réessayez.") from last_error
 
-	def _ensure_model(self, model_name: Optional[str] = None) -> genai.GenerativeModel:
+	def _ensure_model(self, model_name: Optional[str] = None) -> Any:
 		if model_name and model_name != self._model_name:
 			self._model_name = model_name
 			self._model = None
 		if not self._api_key:
 			raise AIChatError("Configurez GEMINI_API_KEY dans votre environnement pour activer l'assistant IA.")
+		if genai is None:
+			raise AIChatError(
+				"Le module google-generativeai n'est pas installé. Exécutez 'pip install google-generativeai' pour activer l'assistant IA."
+			)
 		if not self._configured:
 			genai.configure(api_key=self._api_key)
 			self._configured = True
@@ -222,36 +261,15 @@ class AIChatService:
 		normalized = question.lower()
 		relations = self._build_relation_sets(followers, following)
 
+		# We reduce builtin rules to let Gemini handle more complex queries, 
+		# but keep the "search" logic if the user is asking for specific name matching 
+		# which regex handles faster/cheaper than LLM for huge lists.
+		
+		# Only keep strict name search or simple "who doesn't follow back" listing if explicitly asked.
+		# The rest (trends, "who unfollowed me") is now handled by Gemini with the injected context.
+
 		if any(phrase in normalized for phrase in ["who dont follow", "who don't follow", "who doesnt follow", "qui ne suivent pas"]):
 			return self._format_followback_answer(relations)
-		if "dont follow" in normalized and "how many" in normalized:
-			count = len(relations["not_following_back"])
-			return (
-				f"{count} comptes suivis par l'utilisateur ne le suivent pas en retour."
-				" Liste partielle : "
-				+ self._format_user_list(relations["not_following_back"])
-			)
-
-		search_term = self._extract_search_term(question)
-		if search_term:
-			which_list = self._select_user_list_for_search(normalized)
-			users = relations[which_list]
-			matches = [
-				user
-				for user in users
-				if self._matches_term(user, search_term)
-			]
-			if "how many" in normalized:
-				return self._format_count_answer(search_term, matches, which_list)
-			return self._format_search_answer(search_term, matches, which_list)
-
-		if "any girls" in normalized or normalized.strip().endswith("girl"):
-			matches = [user for user in followers if self._matches_term(user, "girl")]
-			return self._format_search_answer("girl", matches, "followers")
-
-		if "who follow him back" in normalized:
-			mutual = relations["mutual"]
-			return "Voici les followers qui se suivent mutuellement : " + self._format_user_list(mutual)
 
 		return None
 

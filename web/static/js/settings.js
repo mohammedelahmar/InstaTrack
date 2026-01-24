@@ -12,6 +12,9 @@ if (script && script.dataset.settings) {
 const state = {
 	targetAccounts: Array.isArray(initialSettings.target_accounts) ? [...initialSettings.target_accounts] : [],
 	autoRefreshSeconds: Number(initialSettings.auto_refresh_seconds || 0),
+	targetAccounts: Array.isArray(initialSettings.target_accounts) ? [...initialSettings.target_accounts] : [],
+	autoRefreshSeconds: Number(initialSettings.auto_refresh_seconds || 0),
+	discordWebhook: initialSettings.discord_webhook || "",
 	pendingProfile: null,
 };
 
@@ -36,6 +39,9 @@ const elements = {
 	autoRefreshForm: document.getElementById("autoRefreshForm"),
 	autoRefreshInput: document.getElementById("autoRefreshMinutes"),
 	autoRefreshLabel: document.getElementById("autoRefreshLabel"),
+	webhookForm: document.getElementById("webhookForm"),
+	webhookInput: document.getElementById("webhookInput"),
+	webhookClear: document.getElementById("webhookClear"),
 };
 
 elements.inlineSessionPersist.checked = false;
@@ -59,6 +65,10 @@ const updateAutoRefreshUI = () => {
 	elements.autoRefreshLabel.textContent = formatAutoRefresh(state.autoRefreshSeconds);
 	const minutesValue = state.autoRefreshSeconds ? state.autoRefreshSeconds / 60 : 0;
 	elements.autoRefreshInput.value = minutesValue && !Number.isNaN(minutesValue) ? minutesValue : 0;
+};
+
+const updateWebhookUI = () => {
+	elements.webhookInput.value = state.discordWebhook;
 };
 
 const showStatus = (message, variant = "info") => {
@@ -375,7 +385,46 @@ const handleAutoRefreshSubmit = async (event) => {
 
 elements.autoRefreshForm.addEventListener("submit", handleAutoRefreshSubmit);
 
+const handleWebhookSubmit = async (event) => {
+	event.preventDefault();
+	const url = elements.webhookInput.value.trim();
+	if (url && !url.startsWith("https://discord")) {
+		showStatus("L'URL doit commencer par https://discord...", "error");
+		return;
+	}
+	try {
+		showStatus("Enregistrement du Webhook...", "info");
+		const payload = await requestJson("/api/settings/webhook", {
+			method: "POST",
+			body: JSON.stringify({ url }),
+		});
+		state.discordWebhook = payload.url || "";
+		updateWebhookUI();
+		showStatus("Webhook Discord mis à jour.", "success");
+	} catch (error) {
+		showStatus(error.message, "error");
+	}
+};
+
+elements.webhookForm.addEventListener("submit", handleWebhookSubmit);
+
+elements.webhookClear.addEventListener("click", async () => {
+	if (!confirm("Voulez-vous vraiment désactiver les notifications ?")) return;
+	try {
+		await requestJson("/api/settings/webhook", {
+			method: "POST",
+			body: JSON.stringify({ url: null }),
+		});
+		state.discordWebhook = "";
+		updateWebhookUI();
+		showStatus("Notifications désactivées.", "success");
+	} catch (error) {
+		showStatus(error.message, "error");
+	}
+});
+
 renderAccounts();
 updateAutoRefreshUI();
+updateWebhookUI();
 resetAccountResult();
 clearStatus();

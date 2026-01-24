@@ -16,6 +16,7 @@
 		} | tojson }}
 	</script>
 	<script defer src="{{ url_for('static', filename='js/chart.js') }}"></script>
+	<script defer src="{{ url_for('static', filename='js/interactive.js') }}"></script>
 </head>
 <body>
 	<div class="gradient-bg" aria-hidden="true"></div>
@@ -108,7 +109,7 @@
 
 		<div id="actionStatus" class="action-status" role="status" aria-live="polite" hidden></div>
 
-		<section class="metrics-grid">
+		<section class="metrics-grid animate-enter">
 			<div class="metric-card">
 				<span class="metric-label">Followers totaux</span>
 				<span class="metric-value">{{ totals.followers_total }}</span>
@@ -141,7 +142,7 @@
 			</div>
 		</section>
 
-		<section class="panel-row">
+		<section class="panel-row animate-enter">
 			<article class="panel">
 				<div class="panel-header">
 					<h2>Followers · Historique</h2>
@@ -158,7 +159,7 @@
 			</article>
 		</section>
 
-		<section class="panel-row panel-row--relationships">
+		<section class="panel-row panel-row--relationships animate-enter">
 			<article class="panel mini-panel">
 				<div class="panel-header">
 					<h2>Relations followers</h2>
@@ -175,7 +176,7 @@
 			</article>
 		</section>
 
-		<section class="panel-grid">
+		<section class="panel-grid animate-enter">
 			<article class="panel insights">
 				<div class="panel-header">
 					<h2>Insights clés</h2>
@@ -246,7 +247,7 @@
 			</article>
 		</section>
 
-		<section class="panel comparison-panel">
+		<section class="panel comparison-panel animate-enter">
 			<div class="panel-header">
 				<h2>Comparaison des snapshots</h2>
 				<p>
@@ -311,7 +312,7 @@
 			{% endif %}
 		</section>
 
-		<section class="panel followback-panel">
+		<section class="panel followback-panel animate-enter">
 			<div class="panel-header">
 				<h2>Who Doesn’t Follow Back 👀</h2>
 				<p>Comparaison de vos listes following et followers</p>
@@ -366,7 +367,7 @@
 			</div>
 		</section>
 
-		<section class="panel ai-panel" id="aiAssistant">
+		<section class="panel ai-panel animate-enter" id="aiAssistant">
 			<div class="panel-header">
 				<h2>Assistant IA Gemini</h2>
 				<p>Posez une question sur vos followers et l'IA répond avec les données InstaTrack.</p>
@@ -395,7 +396,7 @@
 			{% endif %}
 		</section>
 
-		<section class="panel history-panel">
+		<section class="panel history-panel animate-enter">
 			<div class="panel-header">
 				<h2>Archives des snapshots</h2>
 				<p>Liste des captures enregistrées pour la période sélectionnée</p>
@@ -420,7 +421,7 @@
 			</div>
 		</section>
 
-		<section class="panel full-width">
+		<section class="panel full-width animate-enter">
 			<div class="panel-header">
 				<h2>Flux des évènements</h2>
 				<p>Historique détaillé des modifications</p>

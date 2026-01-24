@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover - fallback when library missing
 
 
 from config.settings import settings
+from pydantic import ValidationError
 from utils.logger import get_logger
 
 
@@ -89,6 +90,20 @@ class InstaClient:
 		self._client.delay_range = (settings.min_request_delay, settings.max_request_delay)
 		self._session_path = Path(settings.instagram_session_path)
 		self._logged_in = False
+
+
+	def _reset_login_state(self, *, clear_session_file: bool = False) -> None:
+		"""Recreate the underlying client and optionally drop the cached session."""
+
+		try:
+			if clear_session_file and self._session_path.exists():
+				self._session_path.unlink()
+		except OSError as exc:  # pragma: no cover - best effort cleanup
+			logger.warning("Impossible de supprimer la session Instagram obsolète: %s", exc)
+
+		self._logged_in = False
+		self._client = Client()
+		self._client.delay_range = (settings.min_request_delay, settings.max_request_delay)
 
 	def _load_session(self) -> bool:
 		if settings.instagram_disable_session:
@@ -218,7 +233,11 @@ class InstaClient:
 		session_attempted = False
 		session_error: Exception | None = None
 
-		# If a raw sessionid cookie is provided, prefer it to avoid challenges
+		# 1) Try cached session first (has full settings/device), then fall back to raw sessionid or credentials.
+		if self._load_session():
+			return
+
+		# 2) Raw sessionid path
 		if settings.instagram_sessionid:
 			session_attempted = True
 			for attempt in range(1, settings.max_retries + 1):
@@ -230,6 +249,7 @@ class InstaClient:
 					return
 				except Exception as exc:  # pragma: no cover - broad to catch instagrapi regressions
 					session_error = exc
+					invalid_session = isinstance(exc, (ClientLoginRequired, ValidationError, KeyError)) or "login_required" in str(exc).lower()
 					if isinstance(exc, ClientError):
 						logger.error(
 							"Instagram sessionid login failed (attempt %s/%s): %s",
@@ -243,6 +263,17 @@ class InstaClient:
 							attempt,
 							settings.max_retries,
 						)
+
+					# Some instagrapi versions throw KeyError/ValidationError when public GraphQL fails even with a valid cookie.
+					# In that case, try loading the cached session file before giving up.
+					if invalid_session and self._load_session():
+						logger.info("Session restaurée depuis le cache après échec login_by_sessionid")
+						return
+
+					if invalid_session:
+						raise ClientLoginRequired(
+							"Le cookie INSTAGRAM_SESSIONID semble invalide ou expiré. Fournissez un nouveau cookie depuis Instagram."
+						) from exc
 					if attempt < settings.max_retries:
 						time.sleep(settings.retry_backoff_seconds * attempt)
 					else:
@@ -251,9 +282,7 @@ class InstaClient:
 							settings.max_retries,
 						)
 
-		if self._load_session():
-			return
-
+		# 3) Credentials fallback
 		if settings.instagram_username and settings.instagram_password:
 			if session_attempted and session_error:
 				logger.info("Instagram sessionid login failed; falling back to username/password authentication")
@@ -350,6 +379,8 @@ class InstaClient:
 				return data
 			except ClientError as exc:
 				last_error = exc
+				if "login_required" in str(exc).lower():
+					raise ClientLoginRequired("Session Instagram expirée ou invalide.") from exc
 				logger.warning(
 					"Lecture du profil %s échouée (tentative %s/%s): %s",
 					username,
@@ -359,7 +390,7 @@ class InstaClient:
 				)
 				if attempt >= retries:
 					raise
-				time.sleep(settings.retry_backoff_seconds * attempt)
+			time.sleep(settings.retry_backoff_seconds * attempt)
 		if last_error:
 			raise last_error
 		raise RuntimeError("Impossible de récupérer le profil Instagram")
@@ -368,16 +399,49 @@ class InstaClient:
 		self._ensure_login()
 		retries = settings.max_retries or 1
 		last_error: ClientError | None = None
+		# instagrapi renamed the follow method in some releases. Prefer friendships_create
+		# when available, otherwise fall back to user_follow.
+		if hasattr(self._client, "friendships_create"):
+			follow_call = self._client.friendships_create  # type: ignore[attr-defined]
+		elif hasattr(self._client, "user_follow"):
+			follow_call = self._client.user_follow  # type: ignore[attr-defined]
+		else:  # pragma: no cover - defensive guard for unexpected client versions
+			raise RuntimeError("Le client Instagram ne supporte pas l'envoi de demandes de suivi.")
 		for attempt in range(1, retries + 1):
 			try:
 				user_id = self._client.user_id_from_username(username)
-				result = self._client.friendships_create(user_id)
+				result = follow_call(user_id)
 				logger.info("Demande de suivi envoyée à %s", username)
 				if isinstance(result, dict):
 					return result
 				return {"status": "ok", "result": result}
+			except ClientLoginRequired as exc:
+				# Session/cookie expired: try to recycle cached session before failing.
+				logger.error(
+					"Session Instagram expirée ou invalide: tentative de reconnexion (%s/%s)",
+					attempt,
+					retries,
+				)
+				if attempt < retries:
+					self._reset_login_state(clear_session_file=False)
+					self.login()
+					time.sleep(settings.retry_backoff_seconds * attempt)
+					continue
+				raise
 			except ClientError as exc:
 				last_error = exc
+				if "login_required" in str(exc).lower():
+					logger.error(
+						"Instagram a renvoyé login_required pendant l'envoi de la demande (%s/%s); nouvelle connexion…",
+						attempt,
+						retries,
+					)
+					if attempt < retries:
+						self._reset_login_state(clear_session_file=False)
+						self.login()
+						time.sleep(settings.retry_backoff_seconds * attempt)
+						continue
+					raise ClientLoginRequired("Session Instagram expirée ou invalide.") from exc
 				logger.warning(
 					"Demande de suivi échouée pour %s (tentative %s/%s): %s",
 					username,

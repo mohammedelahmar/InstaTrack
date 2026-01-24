@@ -10,6 +10,8 @@ from utils import comparer
 from utils.insta_client import InstaClient
 from utils.logger import get_logger
 from utils.storage import MongoStorage, storage as default_storage
+import requests
+import json
 
 
 logger = get_logger(__name__)
@@ -34,6 +36,7 @@ class TrackerService:
 		summaries = []
 		for account in settings.target_accounts:
 			summary = self._collect_for_account(account)
+			self._send_notification(summary)
 			summaries.append(summary)
 
 		return summaries
@@ -64,6 +67,38 @@ class TrackerService:
 			"following_added": following_summary["added"],
 			"following_removed": following_summary["removed"],
 		}
+
+	def _send_notification(self, summary: Dict[str, object]) -> None:
+		if not settings.discord_webhook_url:
+			return
+		
+		changes = []
+		if summary["followers_added"] > 0:
+			changes.append(f"📈 +{summary['followers_added']} followers")
+		if summary["followers_removed"] > 0:
+			changes.append(f"📉 -{summary['followers_removed']} followers")
+		if summary["following_added"] > 0:
+			changes.append(f"👤 +{summary['following_added']} following")
+		if summary["following_removed"] > 0:
+			changes.append(f"👻 -{summary['following_removed']} following")
+			
+		if not changes:
+			return
+			
+		account = summary["target_account"]
+		message = {
+			"embeds": [{
+				"title": f"Changements détectés pour {account}",
+				"description": "\n".join(changes),
+				"color": 3447003, # Greenish
+				"timestamp": datetime.now(UTC).isoformat()
+			}]
+		}
+		
+		try:
+			requests.post(settings.discord_webhook_url, json=message, timeout=5)
+		except Exception as e:
+			logger.error("Failed to send Discord notification: %s", e)
 
 	def _process_list(
 		self,

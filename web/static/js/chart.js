@@ -402,13 +402,30 @@ document.addEventListener("DOMContentLoaded", () => {
 		aiStatus.hidden = !message;
 	};
 
+	const parseMarkdown = (text) => {
+		if (!text) return "";
+		let html = String(text)
+			.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		// Bold
+		html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+		// Italic
+		html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+		// Lists
+		html = html.replace(/^\s*-\s+(.*)$/gm, "<li>$1</li>");
+		html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+		// Line breaks
+		html = html.replace(/\n/g, "<br>");
+		return html;
+	};
+
 	const appendBubble = (message, role) => {
 		if (!aiTranscript) {
 			return null;
 		}
 		const bubble = document.createElement("div");
 		bubble.className = `ai-bubble ai-bubble--${role}`;
-		bubble.textContent = message;
+		// Use innerHTML for Markdown support
+		bubble.innerHTML = parseMarkdown(message); 
 		aiTranscript.appendChild(bubble);
 		aiTranscript.scrollTop = aiTranscript.scrollHeight;
 		return bubble;
@@ -443,7 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				throw new Error(payload.message || "Impossible d'obtenir une réponse.");
 			}
 			if (placeholder) {
-				placeholder.textContent = payload.answer || "Réponse vide.";
+				placeholder.innerHTML = parseMarkdown(payload.answer || "Réponse vide.");
 			}
 			setAiStatus("Réponse générée.", "success");
 			if (aiQuestionInput) {

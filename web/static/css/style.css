@@ -800,6 +800,67 @@ body.charts-hidden .panel-row {
 	color: var(--text-secondary);
 }
 
+/* Animations */
+@keyframes fadeInScale {
+	from {
+		opacity: 0;
+		transform: scale(0.98) translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+}
+
+@keyframes slideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(-15px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.animate-enter {
+	animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	opacity: 0; /* JS will trigger this or we set delay */
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Interactive Tables */
+.table-controls {
+	display: flex;
+	gap: 1rem;
+	margin-bottom: 1rem;
+	align-items: center;
+}
+
+.search-input {
+	background: rgba(15, 23, 42, 0.9);
+	color: var(--text-primary);
+	border: 1px solid var(--border);
+	border-radius: 0.9rem;
+	padding: 0.6rem 0.9rem;
+	font-size: 0.95rem;
+	outline: none;
+	width: 100%;
+	max-width: 300px;
+	transition: box-shadow 0.2s;
+}
+
+.search-input:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+
 .data-table {
 	width: 100%;
 	border-collapse: collapse;

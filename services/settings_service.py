@@ -9,7 +9,7 @@ import os
 
 from config.env_store import EnvStore
 from config.settings import settings
-from utils.insta_client import InstaClient, ClientError
+from utils.insta_client import InstaClient, ClientError, ClientLoginRequired
 from utils.logger import get_logger
 
 
@@ -60,6 +60,7 @@ class SettingsService:
 			"has_session_id": bool(session_value),
 			"session_mask": self._mask_session(session_value),
 			"session_persisted": bool(persisted_session),
+			"discord_webhook": settings.discord_webhook_url,
 		}
 
 	def _mask_session(self, value: str) -> str:
@@ -104,7 +105,23 @@ class SettingsService:
 
 		settings.dashboard_auto_refresh_seconds = seconds
 		self._env_store.set("AUTO_REFRESH_INTERVAL_SECONDS", str(seconds))
+		self._env_store.set("AUTO_REFRESH_INTERVAL_SECONDS", str(seconds))
 		return seconds
+
+	def set_discord_webhook_url(self, url: str | None) -> str | None:
+		cleaned = (url or "").strip()
+		if not cleaned:
+			settings.discord_webhook_url = None
+			self._env_store.remove("DISCORD_WEBHOOK_URL")
+			return None
+		
+		# Basic validation
+		if not cleaned.startswith("https://discord"):
+			raise SettingsError("L'URL doit commencer par https://discord...")
+
+		settings.discord_webhook_url = cleaned
+		self._env_store.set("DISCORD_WEBHOOK_URL", cleaned)
+		return cleaned
 
 	def add_target_account(self, username: str) -> List[str]:
 		clean_username = username.strip().lower()
@@ -135,6 +152,10 @@ class SettingsService:
 			raise SettingsError("Le nom d'utilisateur est obligatoire.")
 		try:
 			profile = self._get_client().get_user_profile(clean_username)
+		except ClientLoginRequired as exc:
+			raise SettingsError(
+				"Session Instagram expirée ou invalide. Fournissez un nouveau cookie INSTAGRAM_SESSIONID dans les paramètres, puis réessayez."
+			) from exc
 		except ClientError as exc:
 			raise SettingsError(f"Impossible de récupérer les informations Instagram: {exc}") from exc
 		except RuntimeError as exc:
@@ -151,6 +172,10 @@ class SettingsService:
 	def send_follow_request(self, username: str) -> Dict[str, object]:
 		try:
 			result = self._get_client().send_follow_request(username.strip())
+		except ClientLoginRequired as exc:
+			raise SettingsError(
+				"Session Instagram expirée ou invalide. Fournissez un nouveau cookie INSTAGRAM_SESSIONID dans les paramètres, puis réessayez."
+			) from exc
 		except ClientError as exc:
 			raise SettingsError(f"La demande de suivi a échoué: {exc}") from exc
 		except RuntimeError as exc:
