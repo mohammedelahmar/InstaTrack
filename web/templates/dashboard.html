@@ -412,16 +412,24 @@
 				<p>Posez une question sur vos followers et l'IA répond avec les données InstaTrack.</p>
 			</div>
 			{% if ai_enabled %}
+			<div id="aiTranscript" class="ai-transcript" aria-live="polite">
+				<div class="ai-bubble ai-bubble--assistant">Bonjour ! Je suis votre assistant InstaTrack. Posez-moi
+					une question sur vos données.</div>
+			</div>
 			<form id="aiChatForm" class="ai-form">
-				<label for="aiQuestion" class="sr-only">Question</label>
-				<textarea id="aiQuestion" name="question" rows="3"
-					placeholder="Ex: Combien de followers ont un prénom féminin ?" autocomplete="off"></textarea>
-				<div class="ai-form__footer">
-					<span id="aiStatus" class="ai-status" hidden></span>
-					<button type="submit" class="btn btn--primary">Envoyer</button>
+				<div class="ai-input-group">
+					<input type="text" id="aiQuestion" name="question" placeholder="Posez une question..."
+						autocomplete="off">
+					<button type="submit" class="btn btn--primary btn--icon">
+						<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+							stroke-width="2">
+							<line x1="22" y1="2" x2="11" y2="13"></line>
+							<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+						</svg>
+					</button>
 				</div>
+				<span id="aiStatus" class="ai-status" hidden></span>
 			</form>
-			<div id="aiTranscript" class="ai-transcript" aria-live="polite"></div>
 			{% else %}
 			<div class="ai-disabled">
 				<p>Ajoutez une variable <strong>GEMINI_API_KEY</strong> à votre fichier .env pour activer le chat
