@@ -21,6 +21,20 @@
 </head>
 
 <body>
+	{% macro render_user(user, meta_text=None) %}
+	<li class="user-item">
+		<div class="user-avatar"
+			style="background: linear-gradient(135deg, {{ ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'] | random }}, #6366f1);">
+			{{ (user.username or user.full_name or '?')[:2] | upper }}
+		</div>
+		<div class="user-info">
+			<span class="user-name">{{ user.username or user.full_name or 'Inconnu' }}</span>
+			<span class="user-meta">{{ meta_text or (user.full_name if user.username and user.full_name else
+				user.username or user.full_name or '—') }}</span>
+		</div>
+	</li>
+	{% endmacro %}
+
 	<div class="gradient-bg" aria-hidden="true"></div>
 	<header class="header">
 		<div class="header__content">
@@ -262,13 +276,7 @@
 				</div>
 				<ul class="change-list">
 					{% for change in insights.top_new_followers %}
-					<li>
-						<div>
-							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu'
-								}}</span>
-							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
-						</div>
-					</li>
+					{{ render_user(change, change.detected_at | replace('T', ' ')) }}
 					{% else %}
 					<li class="empty">Aucun nouveau follower durant cette période.</li>
 					{% endfor %}
@@ -281,13 +289,7 @@
 				</div>
 				<ul class="change-list">
 					{% for change in insights.top_lost_followers %}
-					<li>
-						<div>
-							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu'
-								}}</span>
-							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
-						</div>
-					</li>
+					{{ render_user(change, change.detected_at | replace('T', ' ')) }}
 					{% else %}
 					<li class="empty">Aucune perte détectée sur la période.</li>
 					{% endfor %}
@@ -333,12 +335,7 @@
 							<h4>Ajouts ({{ section.added_total }})</h4>
 							<ul class="change-list">
 								{% for user in section.added %}
-								<li>
-									<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
-										}}</span>
-									<span class="change-meta">{{ user.full_name if user.username and
-										user.full_name else user.username or user.full_name or '—' }}</span>
-								</li>
+								{{ render_user(user) }}
 								{% else %}
 								<li class="empty">Aucun ajout sur la période.</li>
 								{% endfor %}
@@ -348,12 +345,7 @@
 							<h4>Suppressions ({{ section.removed_total }})</h4>
 							<ul class="change-list">
 								{% for user in section.removed %}
-								<li>
-									<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
-										}}</span>
-									<span class="change-meta">{{ user.full_name if user.username and
-										user.full_name else user.username or user.full_name or '—' }}</span>
-								</li>
+								{{ render_user(user) }}
 								{% else %}
 								<li class="empty">Aucune suppression sur la période.</li>
 								{% endfor %}
@@ -389,14 +381,7 @@
 					</p>
 					<ul class="change-list">
 						{% for user in gaps.not_following_you_back.users %}
-						<li>
-							<div>
-								<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
-									}}</span>
-								<span class="change-meta">{{ user.full_name if user.username and user.full_name
-									else user.username or user.full_name or '—' }}</span>
-							</div>
-						</li>
+						{{ render_user(user) }}
 						{% else %}
 						<li class="empty">Tout le monde vous suit en retour 🎉</li>
 						{% endfor %}
@@ -412,14 +397,7 @@
 					</p>
 					<ul class="change-list">
 						{% for user in gaps.you_dont_follow_back.users %}
-						<li>
-							<div>
-								<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
-									}}</span>
-								<span class="change-meta">{{ user.full_name if user.username and user.full_name
-									else user.username or user.full_name or '—' }}</span>
-							</div>
-						</li>
+						{{ render_user(user) }}
 						{% else %}
 						<li class="empty">Vous suivez tout le monde en retour 👍</li>
 						{% endfor %}
