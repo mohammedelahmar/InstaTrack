@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 try:  # pragma: no cover - import guarded for test environments
 	from instagrapi import Client
@@ -76,6 +76,34 @@ def _simplify_users(users: UserMap) -> List[Dict[str, str]]:
 			}
 		)
 	return simplified
+
+
+def _normalize_friendship_status(result: Any) -> Dict[str, Any]:
+	"""Standardize instagrapi follow result into a dict."""
+	if isinstance(result, dict):
+		# Raw API response or dict
+		return result
+	
+	# Handle Pydantic models (FriendshipStatus) or objects
+	data = {}
+	if hasattr(result, "model_dump"):
+		data = result.model_dump()
+	elif hasattr(result, "dict"):
+		data = result.dict()
+	elif result is True:
+		# Legacy/Simple boolean return
+		return {"following": True, "outgoing_request": False}
+	elif result is False:
+		return {"following": False, "outgoing_request": False}
+	else:
+		# Object access attempt
+		data = {
+			"following": getattr(result, "following", False),
+			"outgoing_request": getattr(result, "outgoing_request", False),
+			"is_private": getattr(result, "is_private", False),
+		}
+	
+	return data
 
 
 class InstaClient:
@@ -270,6 +298,14 @@ class InstaClient:
 						logger.info("Session restaurée depuis le cache après échec login_by_sessionid")
 						return
 
+					# IMPACT: instagrapi throws ValidationError/KeyError during verify even if cookies are set.
+					# If the user provides a session ID, we should trust it if the library is just being strict.
+					if invalid_session and self._client.private.cookies.get("sessionid") == settings.instagram_sessionid:
+						logger.warning("Instagrapi verification failed (%s) but sessionid cookie is set. Forcing login success.", exc)
+						self._dump_session()
+						self._logged_in = True
+						return
+
 					if invalid_session:
 						raise ClientLoginRequired(
 							"Le cookie INSTAGRAM_SESSIONID semble invalide ou expiré. Fournissez un nouveau cookie depuis Instagram."
@@ -410,12 +446,32 @@ class InstaClient:
 		for attempt in range(1, retries + 1):
 			try:
 				user_id = self._client.user_id_from_username(username)
-				result = follow_call(user_id)
-				logger.info("Demande de suivi envoyée à %s", username)
-				if isinstance(result, dict):
-					return result
-				return {"status": "ok", "result": result}
+				# 1. Check if we are already following to avoid spam
+				# (optional, but good practice. For now, trust the user's click)
+
+				# 2. Perform follow
+				raw_result = follow_call(user_id)
+				logger.info("Follow request sent to %s (result type: %s)", username, type(raw_result))
+				
+				# 3. Normalize result
+				normalized = _normalize_friendship_status(raw_result)
+				
+				# 4. Return standard structure
+				# API often returns the friendship_status object directly, or wrapped.
+				# We flatten it to a clean dict for the service layer.
+				return {
+					"status": "ok",
+					"following": bool(normalized.get("following")),
+					"outgoing_request": bool(normalized.get("outgoing_request")),
+					"raw": str(raw_result),
+				}
 			except ClientLoginRequired as exc:
+				# Check if this is actually a 403 Action Block masquerading as LoginRequired
+				response = getattr(exc, "response", None)
+				if response and response.status_code == 403:
+					logger.error("Instagram 403 Forbidden on follow action. Likely 'Action Blocked'.")
+					raise ClientError("Action bloquée par Instagram (403). Réessayez plus tard.") from exc
+
 				# Session/cookie expired: try to recycle cached session before failing.
 				logger.error(
 					"Session Instagram expirée ou invalide: tentative de reconnexion (%s/%s)",

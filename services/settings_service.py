@@ -181,12 +181,12 @@ class SettingsService:
 		except RuntimeError as exc:
 			raise SettingsError(str(exc)) from exc
 
-		status = result.get("status") if isinstance(result, dict) else None
+		# Helper now returns flattened dict
 		return {
-			"accepted": bool(result.get("friendship_status", {}).get("following")) if isinstance(result, dict) else False,
-			"pending": bool(result.get("friendship_status", {}).get("outgoing_request")) if isinstance(result, dict) else False,
-			"raw": result,
-			"status": status,
+			"accepted": bool(result.get("following")),
+			"pending": bool(result.get("outgoing_request")),
+			"raw": result.get("raw"),
+			"status": result.get("status"),
 		}
 
 	def close(self) -> None:

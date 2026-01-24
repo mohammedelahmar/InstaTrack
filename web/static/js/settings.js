@@ -194,10 +194,10 @@ function renderAccountResult(profile) {
 					state.targetAccounts = payload.accounts;
 					renderAccounts();
 				}
-				const friendship = payload.result && payload.result.friendship_status;
-				if (friendship && friendship.following) {
+				const result = payload.result || {};
+				if (result.following) {
 					showStatus(`Le compte @${username} est désormais suivi.`, "success");
-				} else if (friendship && friendship.outgoing_request) {
+				} else if (result.outgoing_request) {
 					showStatus("Demande envoyée. Attendez l'acceptation pour collecter les données.", "info");
 				} else {
 					showStatus("Demande envoyée. Vérifiez Instagram pour confirmer.", "info");
