@@ -23,10 +23,15 @@
 <body>
 	{% macro render_user(user, meta_text=None) %}
 	<li class="user-item">
+		{% if user.profile_pic_url %}
+		<img class="user-avatar" src="/api/proxy/image?url={{ user.profile_pic_url | urlencode }}"
+			alt="{{ user.username }}" loading="lazy" style="object-fit: cover;">
+		{% else %}
 		<div class="user-avatar"
 			style="background: linear-gradient(135deg, {{ ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'] | random }}, #6366f1);">
 			{{ (user.username or user.full_name or '?')[:2] | upper }}
 		</div>
+		{% endif %}
 		<div class="user-info">
 			<span class="user-name">{{ user.username or user.full_name or 'Inconnu' }}</span>
 			<span class="user-meta">{{ meta_text or (user.full_name if user.username and user.full_name else

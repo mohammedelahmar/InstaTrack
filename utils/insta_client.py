@@ -67,12 +67,14 @@ def _simplify_users(users: UserMap) -> List[Dict[str, str]]:
 					"pk": getattr(info, "pk", user_id),
 					"username": getattr(info, "username", ""),
 					"full_name": getattr(info, "full_name", ""),
+					"profile_pic_url": str(getattr(info, "profile_pic_url", "")),
 				}
 		simplified.append(
 			{
 				"pk": user_id,
 				"username": data.get("username", ""),
 				"full_name": data.get("full_name", ""),
+				"profile_pic_url": str(data.get("profile_pic_url", "")),
 			}
 		)
 	return simplified

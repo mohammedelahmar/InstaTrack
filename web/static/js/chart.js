@@ -495,14 +495,20 @@ document.addEventListener("DOMContentLoaded", () => {
 		const primary = user.username || user.full_name || "—";
 		const secondary = user.full_name && user.username && user.full_name !== user.username ? user.full_name : "";
 		const initials = getInitials(primary);
-		// Deterministic soft color based on first char
-		const colors = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#f43f5e"];
-		const charCode = primary.charCodeAt(0) || 0;
-		const bg = colors[charCode % colors.length];
+		let avatarHtml;
+		if (user.profile_pic_url && user.profile_pic_url.length > 0) {
+			const proxyUrl = `/api/proxy/image?url=${encodeURIComponent(user.profile_pic_url)}`;
+			avatarHtml = `<img class="user-avatar" src="${proxyUrl}" alt="${escapeHtml(primary)}" loading="lazy" style="object-fit: cover;">`;
+		} else {
+			const colors = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#f43f5e"];
+			const charCode = primary.charCodeAt(0) || 0;
+			const bg = colors[charCode % colors.length];
+			avatarHtml = `<div class="user-avatar" style="background: ${bg}">${escapeHtml(initials)}</div>`;
+		}
 
 		return `
 			<li class="user-item" data-search="${escapeHtml(primary.toLowerCase())} ${escapeHtml(secondary.toLowerCase())}">
-				<div class="user-avatar" style="background: ${bg}">${escapeHtml(initials)}</div>
+				${avatarHtml}
 				<div class="user-info">
 					<span class="user-name">${escapeHtml(primary)}</span>
 					${secondary ? `<span class="user-meta">${escapeHtml(secondary)}</span>` : ""}
