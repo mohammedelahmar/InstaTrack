@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 from typing import Optional
+import requests
 
 from flask import Flask, Response, jsonify, render_template, request
 
@@ -468,5 +469,32 @@ def create_app(
 			f"attachment; filename=instatrack_changes_{filename_account}_{days}d{date_suffix}.csv"
 		)
 		return response
+
+	@app.route("/api/proxy/image")
+	def api_proxy_image():
+		url = request.args.get("url")
+		if not url:
+			return "Missing URL", 400
+
+		# Security: functionality only allowing specific domains
+		allowed_domains = ["fbcdn.net", "instagram.com", "cdninstagram.com"]
+		if not any(domain in url for domain in allowed_domains):
+			return "Forbidden Domain", 403
+
+		try:
+			# Stream fetching to avoid memory issues with large files (though profile pics are small)
+			resp = requests.get(url, stream=True, timeout=10)
+			resp.raise_for_status()
+
+			excluded_headers = ["content-encoding", "content-length", "transfer-encoding", "connection"]
+			headers = [
+				(name, value) for (name, value) in resp.raw.headers.items()
+				if name.lower() not in excluded_headers
+			]
+
+			return Response(resp.iter_content(chunk_size=8192), status=resp.status_code, headers=headers)
+		except Exception as e:
+			app.logger.warning(f"Proxy failed for {url}: {e}")
+			return "Proxy Error", 502
 
 	return app
