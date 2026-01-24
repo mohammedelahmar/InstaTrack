@@ -102,13 +102,15 @@ const downsample = (labels, seriesCollection) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-	const labels = dailyData.map((item) => item.date);
-	const followersAdded = dailyData.map((item) => item.followers_added || 0);
-	const followersRemoved = dailyData.map((item) => item.followers_removed || 0);
-	const followersNet = dailyData.map((item) => item.followers_net || 0);
-	const followingAdded = dailyData.map((item) => item.following_added || 0);
-	const followingRemoved = dailyData.map((item) => item.following_removed || 0);
-	const followingNet = dailyData.map((item) => item.following_net || 0);
+    // Optimization: Limit to last 30 days to prevent browser crash on large datasets
+    const recentData = dailyData.slice(-30);
+	const labels = recentData.map((item) => item.date);
+	const followersAdded = recentData.map((item) => item.followers_added || 0);
+	const followersRemoved = recentData.map((item) => item.followers_removed || 0);
+	const followersNet = recentData.map((item) => item.followers_net || 0);
+	const followingAdded = recentData.map((item) => item.following_added || 0);
+	const followingRemoved = recentData.map((item) => item.following_removed || 0);
+	const followingNet = recentData.map((item) => item.following_net || 0);
 
 	const { labels: reducedLabels, series } = downsample(labels, [
 		followersAdded,

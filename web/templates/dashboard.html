@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +19,7 @@
 	<script defer src="{{ url_for('static', filename='js/chart.js') }}"></script>
 	<script defer src="{{ url_for('static', filename='js/interactive.js') }}"></script>
 </head>
+
 <body>
 	<div class="gradient-bg" aria-hidden="true"></div>
 	<header class="header">
@@ -31,9 +33,9 @@
 					<span class="meta-label">Période analysée</span>
 					<span class="meta-value">
 						{% if selected_start or selected_end %}
-							{{ selected_start or '—' }} → {{ selected_end or '—' }}
+						{{ selected_start or '—' }} → {{ selected_end or '—' }}
 						{% else %}
-							{{ selected_days }} jours
+						{{ selected_days }} jours
 						{% endif %}
 					</span>
 				</div>
@@ -47,12 +49,14 @@
 
 	<main class="content">
 		{% if accounts %}
-		<form class="filters" method="get" data-default-days="{{ selected_days }}" data-range-start="{{ selected_start }}" data-range-end="{{ selected_end }}">
+		<form class="filters" method="get" data-default-days="{{ selected_days }}"
+			data-range-start="{{ selected_start }}" data-range-end="{{ selected_end }}">
 			<div class="field">
 				<label for="account">Compte suivi</label>
 				<select id="account" name="account">
 					{% for account in accounts %}
-					<option value="{{ account }}" {% if account == default_account %}selected{% endif %}>{{ account }}</option>
+					<option value="{{ account }}" {% if account==default_account %}selected{% endif %}>{{ account
+						}}</option>
 					{% endfor %}
 				</select>
 			</div>
@@ -60,7 +64,8 @@
 				<label for="days">Fenêtre</label>
 				<select id="days" name="days">
 					{% for value in timeframes %}
-					<option value="{{ value }}" {% if value == selected_days %}selected{% endif %}>{{ value }} jours</option>
+					<option value="{{ value }}" {% if value==selected_days %}selected{% endif %}>{{ value }} jours
+					</option>
 					{% endfor %}
 				</select>
 			</div>
@@ -73,17 +78,12 @@
 				<input type="date" id="end" name="end" value="{{ selected_end }}">
 			</div>
 			<button type="submit" class="btn btn--primary">Actualiser</button>
-			<a
-				class="btn btn--ghost"
-				href="{{ url_for('export_csv', account=default_account, days=selected_days, start=selected_start if selected_start else None, end=selected_end if selected_end else None) }}"
-			>
+			<a class="btn btn--ghost"
+				href="{{ url_for('export_csv', account=default_account, days=selected_days, start=selected_start if selected_start else None, end=selected_end if selected_end else None) }}">
 				Exporter CSV
 			</a>
-			<a
-				class="btn btn--ghost"
-				href="{{ url_for('dashboard', account=default_account, days=selected_days) }}"
-				id="resetRangeBtn"
-			>
+			<a class="btn btn--ghost" href="{{ url_for('dashboard', account=default_account, days=selected_days) }}"
+				id="resetRangeBtn">
 				Réinitialiser la plage
 			</a>
 		</form>
@@ -122,12 +122,16 @@
 			</div>
 			<div class="metric-card">
 				<span class="metric-label">Net followers</span>
-				<span class="metric-value {{ 'value-positive' if insights.net_followers > 0 else 'value-negative' if insights.net_followers < 0 else '' }}">{{ insights.net_followers }}</span>
+				<span
+					class="metric-value {{ 'value-positive' if insights.net_followers > 0 else 'value-negative' if insights.net_followers < 0 else '' }}">{{
+					insights.net_followers }}</span>
 				<span class="metric-sub">Sur la période sélectionnée</span>
 			</div>
 			<div class="metric-card">
 				<span class="metric-label">Net following</span>
-				<span class="metric-value {{ 'value-positive' if insights.net_following > 0 else 'value-negative' if insights.net_following < 0 else '' }}">{{ insights.net_following }}</span>
+				<span
+					class="metric-value {{ 'value-positive' if insights.net_following > 0 else 'value-negative' if insights.net_following < 0 else '' }}">{{
+					insights.net_following }}</span>
 				<span class="metric-sub">Comptes suivis gagnés/perdus</span>
 			</div>
 			<div class="metric-card">
@@ -148,14 +152,18 @@
 					<h2>Followers · Historique</h2>
 					<p>Ajouts, suppressions et net sur {{ selected_days }} jours</p>
 				</div>
-				<canvas id="followersChart"></canvas>
+				<div class="chart-wrapper">
+					<canvas id="followersChart"></canvas>
+				</div>
 			</article>
 			<article class="panel">
 				<div class="panel-header">
 					<h2>Following · Historique</h2>
 					<p>Evolution des comptes suivis</p>
 				</div>
-				<canvas id="followingChart"></canvas>
+				<div class="chart-wrapper">
+					<canvas id="followingChart"></canvas>
+				</div>
 			</article>
 		</section>
 
@@ -165,14 +173,18 @@
 					<h2>Relations followers</h2>
 					<p>Mutuels vs unilatéraux</p>
 				</div>
-				<canvas id="relationshipChart"></canvas>
+				<div class="chart-wrapper">
+					<canvas id="relationshipChart"></canvas>
+				</div>
 			</article>
 			<article class="panel mini-panel">
 				<div class="panel-header">
 					<h2>Followers vs Following</h2>
 					<p>Comparaison instantanée</p>
 				</div>
-				<canvas id="totalsChart"></canvas>
+				<div class="chart-wrapper">
+					<canvas id="totalsChart"></canvas>
+				</div>
 			</article>
 		</section>
 
@@ -193,7 +205,8 @@
 					</li>
 					<li>
 						<span class="insight-label">Dernière activité</span>
-						<span class="insight-value">{{ insights.latest_activity.detected_at if insights.latest_activity else '—' }}</span>
+						<span class="insight-value">{{ insights.latest_activity.detected_at if
+							insights.latest_activity else '—' }}</span>
 					</li>
 				</ul>
 				{% if insights.best_day %}
@@ -208,7 +221,7 @@
 					<p>{{ insights.worst_day.date }} · {{ insights.worst_day.followers_net }} followers</p>
 				</div>
 				{% endif %}
-		</article>
+			</article>
 			<article class="panel list-panel">
 				<div class="panel-header">
 					<h2>Followers gagnés</h2>
@@ -218,7 +231,8 @@
 					{% for change in insights.top_new_followers %}
 					<li>
 						<div>
-							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu' }}</span>
+							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu'
+								}}</span>
 							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
 						</div>
 					</li>
@@ -236,7 +250,8 @@
 					{% for change in insights.top_lost_followers %}
 					<li>
 						<div>
-							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu' }}</span>
+							<span class="change-user">{{ change['username'] or change['full_name'] or 'Inconnu'
+								}}</span>
 							<span class="change-meta">{{ change['detected_at'] | replace('T', ' ') }}</span>
 						</div>
 					</li>
@@ -252,9 +267,9 @@
 				<h2>Comparaison des snapshots</h2>
 				<p>
 					{% if selected_start or selected_end %}
-						Analyse du {{ selected_start or 'début' }} au {{ selected_end or 'fin' }}
+					Analyse du {{ selected_start or 'début' }} au {{ selected_end or 'fin' }}
 					{% else %}
-						Analyse sur {{ selected_days }} jours
+					Analyse sur {{ selected_days }} jours
 					{% endif %}
 				</p>
 			</div>
@@ -267,13 +282,17 @@
 					<div class="comparison-meta">
 						<div>
 							<span class="meta-label">Snapshot initial</span>
-							<span class="meta-value">{{ section.baseline.collected_at if section.baseline else '—' }}</span>
-							<span class="meta-sub">{{ section.baseline.count if section.baseline else 0 }} comptes</span>
+							<span class="meta-value">{{ section.baseline.collected_at if section.baseline else
+								'—' }}</span>
+							<span class="meta-sub">{{ section.baseline.count if section.baseline else 0 }}
+								comptes</span>
 						</div>
 						<div>
 							<span class="meta-label">Snapshot final</span>
-							<span class="meta-value">{{ section.current.collected_at if section.current else '—' }}</span>
-							<span class="meta-sub">{{ section.current.count if section.current else 0 }} comptes</span>
+							<span class="meta-value">{{ section.current.collected_at if section.current else '—'
+								}}</span>
+							<span class="meta-sub">{{ section.current.count if section.current else 0 }}
+								comptes</span>
 						</div>
 					</div>
 					<div class="comparison-lists">
@@ -282,8 +301,10 @@
 							<ul class="change-list">
 								{% for user in section.added %}
 								<li>
-									<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
-									<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+									<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
+										}}</span>
+									<span class="change-meta">{{ user.full_name if user.username and
+										user.full_name else user.username or user.full_name or '—' }}</span>
 								</li>
 								{% else %}
 								<li class="empty">Aucun ajout sur la période.</li>
@@ -295,8 +316,10 @@
 							<ul class="change-list">
 								{% for user in section.removed %}
 								<li>
-									<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
-									<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+									<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
+										}}</span>
+									<span class="change-meta">{{ user.full_name if user.username and
+										user.full_name else user.username or user.full_name or '—' }}</span>
 								</li>
 								{% else %}
 								<li class="empty">Aucune suppression sur la période.</li>
@@ -308,7 +331,8 @@
 				{% endfor %}
 			</div>
 			{% else %}
-			<p class="empty">Aucun snapshot disponible pour cette plage. Lancez une capture pour construire l'historique.</p>
+			<p class="empty">Aucun snapshot disponible pour cette plage. Lancez une capture pour construire
+				l'historique.</p>
 			{% endif %}
 		</section>
 
@@ -327,15 +351,17 @@
 					<p class="followback-count">
 						{{ gaps.not_following_you_back.count }} comptes
 						{% if gaps.not_following_you_back.count > (gaps.not_following_you_back.users | length) %}
-							<span class="badge">Top {{ gaps.not_following_you_back.users | length }}</span>
+						<span class="badge">Top {{ gaps.not_following_you_back.users | length }}</span>
 						{% endif %}
 					</p>
 					<ul class="change-list">
 						{% for user in gaps.not_following_you_back.users %}
 						<li>
 							<div>
-								<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
-								<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+								<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
+									}}</span>
+								<span class="change-meta">{{ user.full_name if user.username and user.full_name
+									else user.username or user.full_name or '—' }}</span>
 							</div>
 						</li>
 						{% else %}
@@ -348,15 +374,17 @@
 					<p class="followback-count">
 						{{ gaps.you_dont_follow_back.count }} comptes
 						{% if gaps.you_dont_follow_back.count > (gaps.you_dont_follow_back.users | length) %}
-							<span class="badge">Top {{ gaps.you_dont_follow_back.users | length }}</span>
+						<span class="badge">Top {{ gaps.you_dont_follow_back.users | length }}</span>
 						{% endif %}
 					</p>
 					<ul class="change-list">
 						{% for user in gaps.you_dont_follow_back.users %}
 						<li>
 							<div>
-								<span class="change-user">{{ user.username or user.full_name or 'Inconnu' }}</span>
-								<span class="change-meta">{{ user.full_name if user.username and user.full_name else user.username or user.full_name or '—' }}</span>
+								<span class="change-user">{{ user.username or user.full_name or 'Inconnu'
+									}}</span>
+								<span class="change-meta">{{ user.full_name if user.username and user.full_name
+									else user.username or user.full_name or '—' }}</span>
 							</div>
 						</li>
 						{% else %}
@@ -375,13 +403,8 @@
 			{% if ai_enabled %}
 			<form id="aiChatForm" class="ai-form">
 				<label for="aiQuestion" class="sr-only">Question</label>
-				<textarea
-					id="aiQuestion"
-					name="question"
-					rows="3"
-					placeholder="Ex: Combien de followers ont un prénom féminin ?"
-					autocomplete="off"
-				></textarea>
+				<textarea id="aiQuestion" name="question" rows="3"
+					placeholder="Ex: Combien de followers ont un prénom féminin ?" autocomplete="off"></textarea>
 				<div class="ai-form__footer">
 					<span id="aiStatus" class="ai-status" hidden></span>
 					<button type="submit" class="btn btn--primary">Envoyer</button>
@@ -390,7 +413,8 @@
 			<div id="aiTranscript" class="ai-transcript" aria-live="polite"></div>
 			{% else %}
 			<div class="ai-disabled">
-				<p>Ajoutez une variable <strong>GEMINI_API_KEY</strong> à votre fichier .env pour activer le chat IA.</p>
+				<p>Ajoutez une variable <strong>GEMINI_API_KEY</strong> à votre fichier .env pour activer le chat
+					IA.</p>
 				<a class="btn btn--ghost" href="{{ url_for('settings_page') }}">Ouvrir les paramètres</a>
 			</div>
 			{% endif %}
@@ -427,7 +451,8 @@
 				<p>Historique détaillé des modifications</p>
 			</div>
 			{% if change_limit %}
-			<p class="table-note">Affichage des {{ change_limit }} derniers événements (utilisez l'export CSV pour le détail complet).</p>
+			<p class="table-note">Affichage des {{ change_limit }} derniers événements (utilisez l'export CSV pour le
+				détail complet).</p>
 			{% endif %}
 			{% if changes %}
 			<table class="data-table">
@@ -445,7 +470,8 @@
 					<tr>
 						<td>{{ change['detected_at'] | replace('T', ' ') }}</td>
 						<td>{{ change['list_type'] }}</td>
-						<td class="{% if change['change_type'] == 'added' %}value-positive{% else %}value-negative{% endif %}">
+						<td
+							class="{% if change['change_type'] == 'added' %}value-positive{% else %}value-negative{% endif %}">
 							{{ 'Ajout' if change['change_type'] == 'added' else 'Suppression' }}
 						</td>
 						<td>{{ change['username'] or '—' }}</td>
@@ -469,4 +495,5 @@
 		</div>
 	</div>
 </body>
+
 </html>

@@ -37,6 +37,78 @@ body {
 	padding: 3.5rem 0 4rem;
 }
 
+/************************************************************/
+/* Settings Page Polish
+/************************************************************/
+.settings-content {
+	max-width: 800px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 2rem;
+}
+
+.settings-card {
+	background: var(--surface-2);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius-lg);
+	padding: 2rem;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.settings-card__header {
+	margin-bottom: 1.5rem;
+}
+
+.settings-card__header h2 {
+	font-size: 1.25rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+.settings-card__header p {
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+}
+
+.settings-form textarea,
+.settings-form input[type="text"],
+.settings-form input[type="number"] {
+	width: 100%;
+	max-width: 100%;
+	margin-bottom: 1rem;
+}
+
+.settings-form .input-row {
+	display: flex;
+	gap: 1rem;
+}
+
+.settings-form .input-row input {
+	flex: 1;
+	margin-bottom: 0;
+}
+
+.settings-result {
+	margin-top: 1.5rem;
+	padding: 1rem;
+	background: rgba(148, 163, 184, 0.1);
+	border-radius: var(--radius-md);
+	border-left: 4px solid var(--accent-primary);
+}
+
+.settings-actions,
+.settings-inline-actions {
+	display: flex;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
 .header__content {
 	max-width: 1200px;
 	margin: 0 auto;
@@ -296,9 +368,7 @@ body.charts-hidden .panel-row {
 	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
-.panel.mini-panel canvas {
-	height: clamp(200px, 26vh, 250px);
-}
+/* Canvas height handled by .chart-wrapper now */
 
 .panel-grid {
 	display: grid;
@@ -317,9 +387,16 @@ body.charts-hidden .panel-row {
 	backdrop-filter: blur(18px);
 }
 
-.panel canvas {
+.chart-wrapper {
+	position: relative;
 	width: 100%;
 	height: clamp(210px, 32vh, 280px);
+	overflow: hidden;
+	/* Critical for preventing resize loops */
+}
+
+.mini-panel .chart-wrapper {
+	height: clamp(200px, 26vh, 250px);
 }
 
 .ai-panel textarea {
@@ -806,6 +883,7 @@ body.charts-hidden .panel-row {
 		opacity: 0;
 		transform: scale(0.98) translateY(10px);
 	}
+
 	to {
 		opacity: 1;
 		transform: scale(1) translateY(0);
@@ -817,6 +895,7 @@ body.charts-hidden .panel-row {
 		opacity: 0;
 		transform: translateX(-15px);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateX(0);
@@ -825,14 +904,29 @@ body.charts-hidden .panel-row {
 
 .animate-enter {
 	animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-	opacity: 0; /* JS will trigger this or we set delay */
+	opacity: 0;
+	/* JS will trigger this or we set delay */
 }
 
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
+.stagger-1 {
+	animation-delay: 0.1s;
+}
+
+.stagger-2 {
+	animation-delay: 0.2s;
+}
+
+.stagger-3 {
+	animation-delay: 0.3s;
+}
+
+.stagger-4 {
+	animation-delay: 0.4s;
+}
+
+.stagger-5 {
+	animation-delay: 0.5s;
+}
 
 /* Interactive Tables */
 .table-controls {
