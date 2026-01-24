@@ -31,10 +31,38 @@ body {
 	z-index: -2;
 }
 
+@keyframes gradientFlow {
+	0% {
+		background-position: 0% 50%;
+	}
+
+	50% {
+		background-position: 100% 50%;
+	}
+
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
 .header {
-	background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(129, 140, 248, 0.12));
-	border-bottom: 1px solid var(--border);
-	padding: 3.5rem 0 4rem;
+	background: linear-gradient(-45deg, rgba(56, 189, 248, 0.1), rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1));
+	background-size: 400% 400%;
+	animation: gradientFlow 15s ease infinite;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	padding: 4rem 0 4.5rem;
+	position: relative;
+	overflow: hidden;
+}
+
+.header::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
 }
 
 /************************************************************/
@@ -254,11 +282,23 @@ body {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.75rem;
-	background: rgba(15, 23, 42, 0.7);
-	border: 1px solid rgba(148, 163, 184, 0.2);
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 1rem;
 	padding: 0.9rem 1.1rem;
-	box-shadow: 0 12px 28px rgba(6, 11, 26, 0.45);
+	box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+	position: sticky;
+	top: 1rem;
+	z-index: 100;
+	transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.action-bar.stuck {
+	background: rgba(15, 23, 42, 0.85);
+	box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+	border-color: rgba(56, 189, 248, 0.2);
 }
 
 .action-status {
@@ -296,13 +336,36 @@ body {
 }
 
 .metric-card {
-	background: var(--bg-surface);
+	background: rgba(30, 41, 59, 0.4);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
 	border-radius: 1.25rem;
-	padding: 1.4rem 1.6rem;
-	border: 1px solid rgba(56, 189, 248, 0.04);
-	box-shadow: 0 18px 45px rgba(6, 11, 26, 0.55);
+	padding: 1.5rem 1.8rem;
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
 	position: relative;
 	overflow: hidden;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.metric-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 0.5rem;
+}
+
+.metric-icon {
+	width: 24px;
+	height: 24px;
+	color: var(--accent);
+	opacity: 0.8;
 }
 
 .metric-card::after {
@@ -740,7 +803,96 @@ body.charts-hidden .panel-row {
 	background: rgba(15, 23, 42, 0.84);
 	border: 1px solid rgba(148, 163, 184, 0.15);
 	border-radius: 1rem;
-	padding: 0.85rem 1rem;
+	padding: 0;
+	overflow: hidden;
+}
+
+.modal-search-bar {
+	padding: 1rem;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+	background: rgba(15, 23, 42, 0.4);
+}
+
+.modal-search-bar input {
+	width: 100%;
+	background: rgba(2, 6, 23, 0.4);
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 0.75rem;
+	padding: 0.6rem 0.9rem;
+	color: var(--text-primary);
+	font-size: 0.95rem;
+	outline: none;
+	transition: all 0.2s ease;
+}
+
+.modal-search-bar input:focus {
+	border-color: var(--accent);
+	background: rgba(2, 6, 23, 0.6);
+}
+
+.user-item {
+	display: flex;
+	align-items: center;
+	gap: 1.2rem;
+	/* Wider gap */
+	padding: 1.2rem 1.4rem;
+	/* Larger padding */
+	border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+	transition: background 0.15s ease;
+}
+
+.user-item:last-child {
+	border-bottom: none;
+}
+
+.user-item:hover {
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.user-avatar {
+	width: 3.2rem;
+	/* Larger avatar */
+	height: 3.2rem;
+	border-radius: 50%;
+	background: linear-gradient(135deg, var(--accent), #6366f1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 1.15rem;
+	/* Larger initials */
+	color: white;
+	text-transform: uppercase;
+	flex-shrink: 0;
+	box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.user-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	/* More vertical space */
+	min-width: 0;
+	/* Text truncation */
+}
+
+.user-name {
+	font-weight: 700;
+	font-size: 1.1rem;
+	/* Larger name */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-primary);
+}
+
+.user-meta {
+	font-size: 0.9rem;
+	/* Larger meta text */
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .followback-panel {
@@ -1011,29 +1163,63 @@ body.charts-hidden .panel-row {
 	background: rgba(15, 23, 42, 0.95);
 	border-radius: 1.2rem;
 	padding: 1.5rem 1.8rem;
-	max-width: min(90vw, 720px);
-	max-height: 85vh;
-	overflow: hidden;
+	width: 90vw;
+	max-width: 1200px;
+	height: 85vh;
+	display: flex;
+	flex-direction: column;
 	border: 1px solid rgba(148, 163, 184, 0.25);
 	box-shadow: 0 30px 65px rgba(6, 11, 26, 0.6);
 }
 
 .modal__close {
 	position: absolute;
-	top: 0.8rem;
-	right: 0.9rem;
+	top: 1.2rem;
+	right: 1.5rem;
 	background: transparent;
 	border: none;
 	color: var(--text-secondary);
-	font-size: 1.4rem;
+	font-size: 1.8rem;
 	cursor: pointer;
+	transition: color 0.2s;
+	z-index: 10;
+}
+
+.modal__close:hover {
+	color: var(--text-primary);
 }
 
 .modal__body {
-	margin-top: 1rem;
-	height: 100%;
+	flex: 1;
 	overflow-y: auto;
-	padding-right: 0.5rem;
+	padding-right: 1rem;
+	/* Custom Scrollbar for Modal Body */
+	scrollbar-width: thin;
+	scrollbar-color: var(--accent) rgba(15, 23, 42, 0.5);
+}
+
+.modal__body::-webkit-scrollbar {
+	width: 8px;
+}
+
+.modal__body::-webkit-scrollbar-track {
+	background: rgba(15, 23, 42, 0.5);
+	border-radius: 4px;
+}
+
+.modal__body::-webkit-scrollbar-thumb {
+	background-color: var(--accent);
+	border-radius: 4px;
+	border: 2px solid rgba(15, 23, 42, 0.5);
+}
+
+#reportModalTitle {
+	font-size: 1.8rem;
+	font-weight: 700;
+	margin: 0 0 1.5rem 0;
+	letter-spacing: -0.02em;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
 .modal-list {
