@@ -29,12 +29,18 @@ class TrackerService:
 		self._client = client or InstaClient()
 		self._storage = storage or default_storage
 
-	def run_once(self) -> List[Dict[str, int]]:
+	def run_once(self, single_account: Optional[str] = None) -> List[Dict[str, int]]:
 		if not settings.target_accounts:
 			raise RuntimeError("No target accounts configured. Set TARGET_ACCOUNTS in environment.")
 
+		targets = settings.target_accounts
+		if single_account:
+			if single_account not in targets:
+				raise RuntimeError(f"Account '{single_account}' is not in the configured targets list.")
+			targets = [single_account]
+
 		summaries = []
-		for account in settings.target_accounts:
+		for account in targets:
 			summary = self._collect_for_account(account)
 			self._send_notification(summary)
 			summaries.append(summary)

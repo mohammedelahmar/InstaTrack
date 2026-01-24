@@ -380,10 +380,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	const handleSnapshot = async () => {
 		showStatus("Capture en cours…", "info");
+		const account = getActiveAccount();
 		try {
 			const response = await fetch("/api/snapshot", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ account }),
 			});
 			const payload = await response.json();
 			if (!response.ok) {

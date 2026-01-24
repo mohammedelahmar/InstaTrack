@@ -160,15 +160,26 @@ def create_app(
 	def api_settings_snapshot():
 		return jsonify({"status": "ok", "settings": settings_provider.settings_snapshot()})
 
-	@app.route("/api/settings/accounts", methods=["POST"])
-	def api_add_account():
+	@app.route("/api/snapshot", methods=["POST"])
+	def api_trigger_snapshot():
 		payload = request.get_json(silent=True) or {}
-		username = (payload.get("username") or "").strip()
+		account = payload.get("account")
+		# If account is None or empty string, treat as "all accounts" (or filter in service)
+		# But user asked for specific account.
+		# If account is provided, filter. If not, maybe default to all?
+		# frontend sends getActiveAccount() which falls back to defaultAccount or "".
+		
+		# Clean validation
+		target = account if account else None
+
 		try:
-			accounts = settings_provider.add_target_account(username)
-			return jsonify({"status": "ok", "accounts": accounts})
-		except SettingsError as exc:
-			return jsonify({"status": "error", "message": str(exc)}), 400
+			# This runs in main thread, blocking. For prod, use a task queue.
+			summaries = tracker_provider.run_once(single_account=target)
+			count = sum(s["followers_added"] + s["followers_removed"] + s["following_added"] + s["following_removed"] for s in summaries)
+			return jsonify({"status": "ok", "message": f"Snapshot terminé. {count} changements détectés.", "summaries": summaries})
+		except Exception as e:
+			app.logger.exception("Snapshot failed")
+			return jsonify({"status": "error", "message": str(e)}), 500
 
 	@app.route("/api/settings/accounts/<username>", methods=["DELETE"])
 	def api_remove_account(username: str):
