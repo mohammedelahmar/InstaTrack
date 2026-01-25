@@ -5,18 +5,84 @@ from __future__ import annotations
 import csv
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta, time
+from functools import wraps
 from pathlib import Path
 from statistics import fmean
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any, Callable
+import threading
 
 from utils.storage import MongoStorage, storage as default_storage
 from utils import comparer
+
+
+class SimpleCache:
+	"""Thread-safe in-memory cache with TTL."""
+	def __init__(self, default_ttl: int = 300) -> None:
+		self._cache: Dict[str, Tuple[object, datetime]] = {}
+		self._lock = threading.RLock()
+		self._default_ttl = default_ttl
+
+	def get(self, key: str) -> object | None:
+		with self._lock:
+			entry = self._cache.get(key)
+			if not entry:
+				return None
+			value, expiry = entry
+			if datetime.now() > expiry:
+				del self._cache[key]
+				return None
+			return value
+
+	def set(self, key: str, value: object, ttl: int | None = None) -> None:
+		expire_seconds = ttl if ttl is not None else self._default_ttl
+		expiry = datetime.now() + timedelta(seconds=expire_seconds)
+		with self._lock:
+			self._cache[key] = (value, expiry)
+
+	def clear(self) -> None:
+		with self._lock:
+			self._cache.clear()
+
+	def invalidate(self, key_prefix: str) -> None:
+		with self._lock:
+			keys_to_delete = [k for k in self._cache.keys() if k.startswith(key_prefix)]
+			for k in keys_to_delete:
+				del self._cache[k]
+
+
+_report_cache = SimpleCache(default_ttl=300) # 5 minutes default
+
+
+def cached(ttl: int = 300, key_prefix: str = ""):
+	def decorator(func: Callable) -> Callable:
+		@wraps(func)
+		def wrapper(self, *args, **kwargs):
+			# Create a cache key based on function name and simple arguments
+			# We assume self is ReportService
+			arg_key = "_".join(str(a) for a in args)
+			kw_key = "_".join(f"{k}={v}" for k, v in sorted(kwargs.items()) if v is not None)
+			cache_key = f"{key_prefix or func.__name__}:{arg_key}:{kw_key}"
+			
+			cached_result = _report_cache.get(cache_key)
+			if cached_result is not None:
+				return cached_result
+			
+			result = func(self, *args, **kwargs)
+			_report_cache.set(cache_key, result, ttl=ttl)
+			return result
+		return wrapper
+	return decorator
 
 
 class ReportService:
 	def __init__(self, storage: Optional[MongoStorage] = None) -> None:
 		self._storage = storage or default_storage
 
+	def invalidate_cache(self) -> None:
+		"""Clear all cached reports."""
+		_report_cache.clear()
+
+	@cached(ttl=60) # Short cache for recent changes as they might happen frequent
 	def recent_changes(
 		self,
 		*,
