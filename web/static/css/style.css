@@ -68,74 +68,7 @@ body {
 /************************************************************/
 /* Settings Page Polish
 /************************************************************/
-.settings-content {
-	max-width: 800px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 2rem;
-}
 
-.settings-card {
-	background: var(--surface-2);
-	border: 1px solid var(--border-color);
-	border-radius: var(--radius-lg);
-	padding: 2rem;
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.settings-card:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.settings-card__header {
-	margin-bottom: 1.5rem;
-}
-
-.settings-card__header h2 {
-	font-size: 1.25rem;
-	font-weight: 600;
-	margin-bottom: 0.5rem;
-}
-
-.settings-card__header p {
-	color: var(--text-secondary);
-	font-size: 0.9rem;
-}
-
-.settings-form textarea,
-.settings-form input[type="text"],
-.settings-form input[type="number"] {
-	width: 100%;
-	max-width: 100%;
-	margin-bottom: 1rem;
-}
-
-.settings-form .input-row {
-	display: flex;
-	gap: 1rem;
-}
-
-.settings-form .input-row input {
-	flex: 1;
-	margin-bottom: 0;
-}
-
-.settings-result {
-	margin-top: 1.5rem;
-	padding: 1rem;
-	background: rgba(148, 163, 184, 0.1);
-	border-radius: var(--radius-md);
-	border-left: 4px solid var(--accent-primary);
-}
-
-.settings-actions,
-.settings-inline-actions {
-	display: flex;
-	gap: 1rem;
-	margin-top: 1rem;
-}
 
 /* --- Quality / Audience Health --- */
 .quality-grid {
