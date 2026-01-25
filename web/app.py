@@ -122,6 +122,7 @@ def create_app(
 			target_account=default_account,
 			limit=25,
 		)
+		quality = report_provider.get_audience_quality_metrics(target_account=default_account)
 
 		range_context = {
 			"start_iso": report_provider._iso_or_none(resolved_start),
@@ -141,6 +142,7 @@ def create_app(
 			comparison=comparison,
 			history=history,
 			relationships=relationships,
+			quality=quality,
 			range_context=range_context,
 			accounts=accounts,
 			default_account=default_account,

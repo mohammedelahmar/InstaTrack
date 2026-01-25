@@ -222,6 +222,39 @@
 		<section class="panel-row panel-row--relationships animate-enter">
 			<article class="panel mini-panel">
 				<div class="panel-header">
+					<h2>Audience Health</h2>
+					<p>Analysed on {{ quality.total_followers }} followers</p>
+				</div>
+				<div class="quality-grid">
+					<div class="quality-stat">
+						<span class="stat-value">{{ quality.potential_bots_count }}</span>
+						<span class="stat-label">Potential Bots</span>
+					</div>
+					<div class="quality-stat">
+						<span class="stat-value">{{ quality.verified_count }}</span>
+						<span class="stat-label">Verified (VIP)</span>
+					</div>
+					<div class="quality-stat">
+						<span class="stat-value">{{ quality.private_count }}</span>
+						<span class="stat-label">Private Accounts</span>
+					</div>
+				</div>
+				{% if quality.potential_bots_count > 0 %}
+				<div class="quality-alert">
+					⚠️ {{ quality.potential_bots_count }} accounts look suspicious.
+				</div>
+				<details class="quality-details">
+					<summary> Voir les comptes suspects</summary>
+					<ul class="user-list">
+						{% for user in quality['potential_bots'] %}
+						{{ render_user(user, user.get('quality_reason', 'Suspicious')) }}
+						{% endfor %}
+					</ul>
+				</details>
+				{% endif %}
+			</article>
+			<article class="panel mini-panel">
+				<div class="panel-header">
 					<h2>Relations followers</h2>
 					<p>Mutuels vs unilatéraux</p>
 				</div>
