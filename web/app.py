@@ -178,6 +178,13 @@ def create_app(
 		try:
 			# This runs in main thread, blocking. For prod, use a task queue.
 			summaries = tracker_provider.run_once(single_account=target)
+			
+			# Invalidate report cache so new data appears immediately
+			try:
+				report_provider.invalidate_cache()
+			except Exception:
+				pass
+
 			count = sum(s["followers_added"] + s["followers_removed"] + s["following_added"] + s["following_removed"] for s in summaries)
 			return jsonify({"status": "ok", "message": f"Snapshot terminé. {count} changements détectés.", "summaries": summaries})
 		except Exception as e:
