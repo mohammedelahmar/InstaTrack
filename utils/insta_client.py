@@ -68,6 +68,8 @@ def _simplify_users(users: UserMap) -> List[Dict[str, str]]:
 					"username": getattr(info, "username", ""),
 					"full_name": getattr(info, "full_name", ""),
 					"profile_pic_url": str(getattr(info, "profile_pic_url", "")),
+					"is_private": getattr(info, "is_private", False),
+					"is_verified": getattr(info, "is_verified", False),
 				}
 		simplified.append(
 			{
@@ -75,6 +77,8 @@ def _simplify_users(users: UserMap) -> List[Dict[str, str]]:
 				"username": data.get("username", ""),
 				"full_name": data.get("full_name", ""),
 				"profile_pic_url": str(data.get("profile_pic_url", "")),
+				"is_private": data.get("is_private", False),
+				"is_verified": data.get("is_verified", False),
 			}
 		)
 	return simplified
