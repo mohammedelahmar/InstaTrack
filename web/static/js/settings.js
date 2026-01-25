@@ -71,22 +71,45 @@ const updateWebhookUI = () => {
 	elements.webhookInput.value = state.discordWebhook;
 };
 
-const showStatus = (message, variant = "info") => {
-	if (!elements.status) {
-		return;
+// Toast Notification System
+const showToast = (message, variant = "info") => {
+	let container = document.querySelector(".toast-container");
+	if (!container) {
+		container = document.createElement("div");
+		container.className = "toast-container";
+		document.body.appendChild(container);
 	}
-	elements.status.textContent = message;
-	elements.status.classList.remove("action-status--info", "action-status--success", "action-status--error");
-	elements.status.classList.add(`action-status--${variant}`);
-	elements.status.hidden = false;
+
+	const toast = document.createElement("div");
+	toast.className = `toast toast--${variant}`;
+	toast.textContent = message;
+
+	container.appendChild(toast);
+
+	// Trigger animation
+	requestAnimationFrame(() => {
+		toast.classList.add("show");
+	});
+
+	// Auto dismiss
+	setTimeout(() => {
+		toast.classList.remove("show");
+		toast.addEventListener("transitionend", () => {
+			toast.remove();
+			if (container.children.length === 0) {
+				container.remove();
+			}
+		});
+	}, 5000);
+};
+
+const showStatus = (message, variant = "info") => {
+	// Redirect legacy calls to toast
+	showToast(message, variant);
 };
 
 const clearStatus = () => {
-	if (!elements.status) {
-		return;
-	}
-	elements.status.textContent = "";
-	elements.status.hidden = true;
+	// No-op for toasts
 };
 
 const requestJson = async (url, options = {}) => {
