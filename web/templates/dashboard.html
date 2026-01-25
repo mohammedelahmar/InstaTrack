@@ -22,7 +22,7 @@
 
 <body>
 	{% macro render_user(user, meta_text=None) %}
-	<li class="user-item">
+	<li class="user-item" data-username="{{ user.username or '' }}">
 		{% if user.profile_pic_url %}
 		<img class="user-avatar" src="/api/proxy/image?url={{ user.profile_pic_url | urlencode }}"
 			alt="{{ user.username }}" loading="lazy" style="object-fit: cover;">
@@ -524,7 +524,7 @@
 				</thead>
 				<tbody>
 					{% for change in changes %}
-					<tr>
+					<tr data-username="{{ change['username'] or '' }}">
 						<td>{{ change['detected_at'] | replace('T', ' ') }}</td>
 						<td>{{ change['list_type'] }}</td>
 						<td
@@ -551,6 +551,64 @@
 			<div id="reportModalBody" class="modal__body"></div>
 		</div>
 	</div>
+	<dialog id="profileModal" class="profile-modal">
+		<div class="profile-card">
+			<button class="profile-close" aria-label="Fermer">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+					stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"></line>
+					<line x1="6" y1="6" x2="18" y2="18"></line>
+				</svg>
+			</button>
+			<div class="profile-header">
+				<div class="profile-avatar-wrapper">
+					<img id="p-avatar" class="profile-avatar" src="" alt="Avatar" loading="lazy">
+					<span id="p-badge" class="profile-verified-badge" hidden>
+						<svg viewBox="0 0 24 24" fill="currentColor">
+							<path
+								d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.114-1.334.325C14.748 2.58 13.353 1.7 11.75 1.7s-2.997.88-3.688 2.126c-.415-.21-.865-.325-1.333-.325-2.11 0-3.818 1.79-3.818 4 0 .495.083.965.238 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.115 1.333-.324.69 1.246 2.085 2.125 3.688 2.125.042 0 .084-.002.126-.003.04.002.083.004.124.004 1.603 0 2.998-.88 3.688-2.126.415.21.865.325 1.333.325 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.346.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
+						</svg>
+					</span>
+				</div>
+				<h2 id="p-fullname">Chargement...</h2>
+				<p id="p-username">@...</p>
+			</div>
+
+			<div class="profile-stats">
+				<div class="stat-box">
+					<span id="p-posts" class="stat-num">-</span>
+					<span class="stat-label">Posts</span>
+				</div>
+				<div class="stat-box">
+					<span id="p-followers" class="stat-num">-</span>
+					<span class="stat-label">Followers</span>
+				</div>
+				<div class="stat-box">
+					<span id="p-following" class="stat-num">-</span>
+					<span class="stat-label">Following</span>
+				</div>
+			</div>
+
+			<div class="profile-bio">
+				<p id="p-bio"></p>
+				<a id="p-link" href="#" target="_blank" rel="noopener noreferrer" hidden>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+						stroke-width="2">
+						<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+						<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+					</svg>
+					<span id="p-link-text">Site Web</span>
+				</a>
+			</div>
+
+			<div class="profile-meta">
+				<span id="p-private" class="meta-tag meta-tag--private" hidden>Privé 🔒</span>
+				<span id="p-public" class="meta-tag meta-tag--public" hidden>Public 🌍</span>
+				<span id="p-follows-you" class="meta-tag meta-tag--success" hidden>Vous suit ✅</span>
+				<span id="p-not-follows-you" class="meta-tag meta-tag--warning" hidden>Ne vous suit pas ⚠️</span>
+			</div>
+		</div>
+	</dialog>
 </body>
 
 </html>

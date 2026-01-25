@@ -396,13 +396,22 @@ class InstaClient:
 		following = self.fetch_following(username)
 		return followers, following
 
-	def get_user_profile(self, username: str) -> Dict[str, object]:
+	def get_user_profile(self, username: str, retries: int | None = None) -> Dict[str, object]:
 		self._ensure_login()
-		retries = settings.max_retries or 1
+		# Clear instagrapi cache to avoid stale profile data
+		try:
+			cache = getattr(self._client, "cache", None)
+			if cache and hasattr(cache, "clear"):
+				cache.clear()
+		except Exception:
+			pass
+
+		max_tries = retries if retries is not None else (settings.max_retries or 1)
 		last_error: ClientError | None = None
-		for attempt in range(1, retries + 1):
+		for attempt in range(1, max_tries + 1):
 			try:
-				info = self._client.user_info_by_username(username)
+				# Use private API v1 directly to skip flaky public requests (speed up)
+				info = self._client.user_info_by_username_v1(username)
 				if hasattr(info, "model_dump"):
 					data = info.model_dump()
 				elif hasattr(info, "dict"):
@@ -414,6 +423,12 @@ class InstaClient:
 						"full_name": getattr(info, "full_name", ""),
 						"is_private": getattr(info, "is_private", False),
 						"is_verified": getattr(info, "is_verified", False),
+						"profile_pic_url": str(getattr(info, "profile_pic_url", "")),
+						"biography": getattr(info, "biography", ""),
+						"external_url": getattr(info, "external_url", ""),
+						"media_count": getattr(info, "media_count", 0),
+						"follower_count": getattr(info, "follower_count", 0),
+						"following_count": getattr(info, "following_count", 0),
 					}
 				data.setdefault("pk", getattr(info, "pk", None))
 				data.setdefault("username", getattr(info, "username", username))

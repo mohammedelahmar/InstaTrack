@@ -144,5 +144,10 @@ class TrackerService:
 
 		return {"added": len(added), "removed": len(removed)}
 
+	def get_live_profile(self, username: str) -> Dict[str, object]:
+		"""Fetch fresh profile details on demand."""
+		# Use single retry for UI responsiveness
+		return self._client.get_user_profile(username, retries=1)
+
 
 tracker_service = TrackerService()

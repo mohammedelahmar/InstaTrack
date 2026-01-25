@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Table Filtering
     setupTableFiltering();
+
+    // 3. Profile Modal
+    setupProfileModal();
 });
 
 function setupTableFiltering() {
@@ -57,5 +60,127 @@ function setupTableFiltering() {
                 row.style.display = text.includes(term) ? '' : 'none';
             });
         });
+    });
+}
+
+function setupProfileModal() {
+    const modal = document.getElementById('profileModal');
+    if (!modal) return;
+
+    const closeBtn = modal.querySelector('.profile-close');
+    const els = {
+        avatar: document.getElementById('p-avatar'),
+        badge: document.getElementById('p-badge'),
+        fullname: document.getElementById('p-fullname'),
+        username: document.getElementById('p-username'),
+        posts: document.getElementById('p-posts'),
+        followers: document.getElementById('p-followers'),
+        following: document.getElementById('p-following'),
+        bio: document.getElementById('p-bio'),
+        link: document.getElementById('p-link'),
+        linkText: document.getElementById('p-link-text'),
+        private: document.getElementById('p-private'),
+        public: document.getElementById('p-public'),
+        followsYou: document.getElementById('p-follows-you'),
+        notFollowsYou: document.getElementById('p-not-follows-you'),
+    };
+
+    const formatNumber = (num) => {
+        return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num || 0);
+    };
+
+    const openModal = async (username) => {
+        modal.showModal();
+        
+        // Reset state
+        els.avatar.src = ""; // Clear old image
+        els.fullname.textContent = "Chargement...";
+        els.username.textContent = `@${username}`;
+        els.posts.textContent = "-";
+        els.followers.textContent = "-";
+        els.following.textContent = "-";
+        els.bio.textContent = "";
+
+        // Force hide everything
+        const hide = (el) => { if(el) { el.hidden = true; el.style.display = 'none'; } };
+        const show = (el, type = 'block') => { if(el) { el.hidden = false; el.style.display = type; } };
+
+        hide(els.link);
+        hide(els.badge);
+        hide(els.private);
+        hide(els.public);
+        hide(els.followsYou);
+        hide(els.notFollowsYou);
+
+        try {
+            const res = await fetch(`/api/profile/${username}`);
+            const data = await res.json();
+            if (data.status !== 'ok') throw new Error(data.message);
+
+            const p = data.profile;
+            
+            // Populate
+            if (p.profile_pic_url) {
+                els.avatar.src = `/api/proxy/image?url=${encodeURIComponent(p.profile_pic_url)}`;
+            }
+            
+            els.fullname.textContent = p.full_name || username;
+            els.username.textContent = `@${p.username}`;
+            
+            if (p.is_verified) {
+                show(els.badge, 'flex');
+            } else {
+                hide(els.badge);
+            }
+            
+            els.posts.textContent = formatNumber(p.media_count);
+            els.followers.textContent = formatNumber(p.follower_count);
+            els.following.textContent = formatNumber(p.following_count);
+            
+            els.bio.textContent = p.biography || "";
+            
+            if (p.external_url) {
+                els.link.href = p.external_url;
+                els.linkText.textContent = new URL(p.external_url).hostname.replace('www.', '');
+                show(els.link, 'inline-flex');
+            } else {
+                hide(els.link);
+            }
+            
+            if (p.is_private) {
+                show(els.private, 'inline-block');
+                hide(els.public);
+            } else {
+                hide(els.private);
+                show(els.public, 'inline-block');
+            }
+
+            // We don't have logic for followsYou yet, so keep hidden
+            hide(els.followsYou);
+            hide(els.notFollowsYou);
+
+        } catch (err) {
+            els.fullname.textContent = "Erreur";
+            els.bio.textContent = "Impossible de charger le profil.";
+            console.error(err);
+        }
+    };
+
+    closeBtn.addEventListener('click', () => modal.close());
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.close();
+    });
+
+    // Delegate clicks
+    document.body.addEventListener('click', (e) => {
+        const item = e.target.closest('.user-item, tr');
+        if (!item) return;
+        
+        if (e.target.closest('a, button')) return;
+
+        const username = item.dataset.username;
+        if (username && username !== 'None' && username !== '') {
+            openModal(username);
+        }
     });
 }

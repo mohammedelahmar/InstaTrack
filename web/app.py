@@ -218,6 +218,14 @@ def create_app(
 		except SettingsError as exc:
 			return jsonify({"status": "error", "message": str(exc)}), 400
 
+	@app.route("/api/profile/<username>", methods=["GET"])
+	def api_get_profile(username: str):
+		try:
+			profile = tracker_provider.get_live_profile(username)
+			return jsonify({"status": "ok", "profile": profile})
+		except Exception as exc:
+			return jsonify({"status": "error", "message": str(exc)}), 404
+
 	@app.route("/api/settings/follow-request", methods=["POST"])
 	def api_follow_request():
 		payload = request.get_json(silent=True) or {}
