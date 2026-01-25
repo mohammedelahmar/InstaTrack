@@ -68,12 +68,30 @@ class MongoStorage:
 			name="snapshot_lookup",
 		)
 
+		snapshots.create_index(
+			[
+				("target_account", ASCENDING),
+				("collected_at", -1),
+			],
+			name="snapshot_history_lookup",
+		)
+		
+		# Optimize latest_snapshot: target_account + list_type + collected_at DESC
+		snapshots.create_index(
+			[
+				("target_account", ASCENDING),
+				("list_type", ASCENDING),
+				("collected_at", -1),
+			],
+			name="snapshot_latest",
+		)
+
 		changes.create_index(
 			[
 				("target_account", ASCENDING),
-				("detected_at", ASCENDING),
+				("detected_at", -1),
 			],
-			name="changes_lookup",
+			name="changes_lookup_v2",
 		)
 
 	def _collection(self, name: str) -> Collection:
