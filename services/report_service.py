@@ -660,4 +660,72 @@ class ReportService:
 			)
 		return history
 
+	def get_audience_quality_metrics(self, *, target_account: Optional[str] = None) -> Dict[str, object]:
+		if not target_account:
+			return {}
+
+		latest_followers = self._storage.latest_snapshot(target_account, "followers")
+		if not latest_followers:
+			return {}
+
+		users = latest_followers.get("users", [])
+		total_followers = len(users)
+		if total_followers == 0:
+			return {}
+
+		verified_users = []
+		private_users = []
+		potential_bots = []
+		
+		for user in users:
+			is_verified = user.get("is_verified", False)
+			is_private = user.get("is_private", False)
+			username = user.get("username", "")
+			full_name = user.get("full_name", "")
+			profile_pic = user.get("profile_pic_url", "")
+
+			if is_verified:
+				verified_users.append(user)
+			if is_private:
+				private_users.append(user)
+			
+			# Simple heuristics for potential bot/low quality
+			# 1. No profile picture (or default placeholder, if we could detect it) -> heavily implies low effort
+			# 2. No full name AND username has >= 4 digits at the end -> suspicion
+			# 3. Just no full name -> weak suspicion, ignore alone.
+			
+			# Heuristic 1: Missing Picture (if empty string)
+			no_pic = not profile_pic
+			
+			# Heuristic 2: Suspicious Username
+			has_digits = sum(c.isdigit() for c in username[-4:]) >= 3 if len(username) > 4 else False
+			no_name = not full_name
+			
+			suspicious = False
+			reason = ""
+			
+			if no_pic:
+				suspicious = True
+				reason = "No Profile Pic"
+			elif no_name and has_digits:
+				suspicious = True
+				reason = "Suspicious Name"
+			
+			if suspicious:
+				# Add detection reason to the user object for display
+				user_copy = user.copy()
+				user_copy["quality_reason"] = reason
+				potential_bots.append(user_copy)
+
+		return {
+			"total_followers": total_followers,
+			"verified_count": len(verified_users),
+			"private_count": len(private_users),
+			"potential_bots_count": len(potential_bots),
+			"good_quality_count": total_followers - len(potential_bots),
+			"verified_users": verified_users[:50], # Top 50 VIPs
+			"potential_bots": potential_bots[:50], # Top 50 Bots
+		}
+
+
 report_service = ReportService()
