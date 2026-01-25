@@ -101,6 +101,7 @@ class ReportService:
 		)
 		return [self._serialize_change(event) for event in events]
 
+	@cached(ttl=300)
 	def daily_summary(
 		self,
 		*,
@@ -148,6 +149,7 @@ class ReportService:
 			summary.append(entry)
 		return summary
 
+	@cached(ttl=300)
 	def counts(
 		self,
 		*,
@@ -272,6 +274,7 @@ class ReportService:
 
 		return response
 
+	@cached(ttl=300)
 	def relationship_breakdown(
 		self,
 		*,
@@ -347,6 +350,7 @@ class ReportService:
 			},
 		}
 
+	@cached(ttl=300)
 	def insights(
 		self,
 		*,
@@ -562,6 +566,7 @@ class ReportService:
 
 		return start_dt, end_dt
 
+	@cached(ttl=60)
 	def compare_snapshots(
 		self,
 		*,
@@ -654,6 +659,7 @@ class ReportService:
 			"following": comparisons.get("following", {}),
 		}
 
+	@cached(ttl=300)
 	def snapshot_history(
 		self,
 		*,
@@ -726,6 +732,7 @@ class ReportService:
 			)
 		return history
 
+	@cached(ttl=300)
 	def get_audience_quality_metrics(self, *, target_account: Optional[str] = None) -> Dict[str, object]:
 		if not target_account:
 			return {}
