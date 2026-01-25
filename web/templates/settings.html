@@ -25,14 +25,34 @@
 	<main class="content settings-content">
 		<section class="settings-card">
 			<header class="settings-card__header">
-				<h2>Comptes surveillés</h2>
-				<p>Ajoutez ou supprimez des comptes cibles. Chaque nouveau compte est validé avant d'être suivi.</p>
+				<div class="settings-card__icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+						<circle cx="8.5" cy="7" r="4"></circle>
+						<line x1="20" y1="8" x2="20" y2="14"></line>
+						<line x1="23" y1="11" x2="17" y2="11"></line>
+					</svg>
+				</div>
+				<div>
+					<h2>Comptes surveillés</h2>
+					<p>Ajoutez ou supprimez des comptes cibles.</p>
+				</div>
 			</header>
 			<form id="accountForm" class="settings-form" autocomplete="off">
-				<label for="accountInput">Nom d'utilisateur Instagram</label>
-				<div class="input-row">
+				<label for="accountInput" class="input-label">Nom d'utilisateur Instagram</label>
+				<div class="input-group">
+					<div class="input-prefix">@</div>
 					<input type="text" id="accountInput" placeholder="ex: mon_compte" required>
-					<button type="submit" class="btn btn--primary">Analyser</button>
+					<button type="submit" class="btn btn--primary">
+						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round">
+							<circle cx="11" cy="11" r="8"></circle>
+							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+						</svg>
+						Analyser
+					</button>
 				</div>
 			</form>
 			<div id="accountResult" class="settings-result" hidden>
@@ -40,11 +60,11 @@
 				<p id="accountResultDescription"></p>
 				<div id="accountResultActions" class="settings-actions"></div>
 				<form id="inlineSessionForm" class="settings-inline-form" hidden>
-					<label for="inlineSessionInput">Session ID Instagram</label>
+					<label for="inlineSessionInput" class="input-label">Session ID Instagram</label>
 					<input type="text" id="inlineSessionInput" placeholder="Copiez ici la valeur sessionid">
-					<label class="checkbox">
+					<label class="checkbox-wrapper">
 						<input type="checkbox" id="inlineSessionPersist">
-						Conserver ce session ID dans le fichier .env
+						<span class="checkbox-label">Conserver ce session ID</span>
 					</label>
 					<div class="settings-inline-actions">
 						<button type="submit" class="btn btn--primary">Enregistrer et ajouter</button>
@@ -55,59 +75,111 @@
 			<ul id="accountsList" class="settings-chips" aria-live="polite"></ul>
 		</section>
 
+
 		<section class="settings-card">
 			<header class="settings-card__header">
-				<h2>Session Instagram</h2>
-				<p>Mettez à jour le cookie sessionid utilisé pour authentifier l'application.</p>
+				<div class="settings-card__icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+						<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+					</svg>
+				</div>
+				<div>
+					<h2>Session Instagram</h2>
+					<p>Gérez l'authentification de l'application.</p>
+				</div>
 			</header>
-			<p class="settings-hint">Session actuelle : <span id="sessionMask">{{ settings.session_mask or '—'
-					}}</span></p>
+			<div class="session-status">
+				<span class="status-indicator {{ 'active' if settings.session_mask else 'inactive' }}"></span>
+				<span class="status-text">
+					Session actuelle : <strong>{{ settings.session_mask or 'Aucune' }}</strong>
+				</span>
+			</div>
+
 			<form id="sessionForm" class="settings-form">
-				<label for="sessionInput">Nouveau session ID</label>
-				<textarea id="sessionInput" rows="3" placeholder="Copiez ici la valeur sessionid"></textarea>
-				<label class="checkbox">
-					<input type="checkbox" id="sessionPersist" checked>
-					Sauvegarder dans le fichier .env (recommandé)
-				</label>
-				<div class="settings-inline-actions">
-					<button type="submit" class="btn btn--primary">Mettre à jour</button>
-					<button type="button" id="sessionClear" class="btn btn--ghost">Supprimer la session</button>
+				<label for="sessionInput" class="input-label">Nouveau session ID</label>
+				<textarea id="sessionInput" rows="2" placeholder="Copiez ici la valeur sessionid"></textarea>
+				<div class="form-footer">
+					<label class="checkbox-wrapper">
+						<input type="checkbox" id="sessionPersist" checked>
+						<span class="checkbox-label">Sauvegarder dans .env</span>
+					</label>
+					<div class="settings-inline-actions">
+						<button type="submit" class="btn btn--primary">Mettre à jour</button>
+						<button type="button" id="sessionClear" class="btn btn--ghost btn--icon-only"
+							aria-label="Supprimer">
+							<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+								fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+								stroke-linejoin="round">
+								<polyline points="3 6 5 6 21 6"></polyline>
+								<path
+									d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+								</path>
+							</svg>
+						</button>
+					</div>
 				</div>
 			</form>
-			<p class="settings-note">Astuce : décochez la sauvegarde pour un usage temporaire (mode session courte).
-			</p>
 		</section>
 
 		<section class="settings-card">
 			<header class="settings-card__header">
-				<h2>Notifications Discord</h2>
-				<p>Recevez une alerte lorsqu'un changement est détecté.</p>
+				<div class="settings-card__icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+						<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+					</svg>
+				</div>
+				<div>
+					<h2>Notifications Discord</h2>
+					<p>Recevez une alerte lorsqu'un changement est détecté.</p>
+				</div>
 			</header>
 			<form id="webhookForm" class="settings-form">
-				<label for="webhookInput">URL du Webhook</label>
-				<textarea id="webhookInput" rows="2" placeholder="https://discord.com/api/webhooks/..."></textarea>
-				<div class="settings-inline-actions">
+				<label for="webhookInput" class="input-label">URL du Webhook</label>
+				<div class="input-group">
+					<input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..."
+						value="{{ settings.discord_webhook_url or '' }}">
 					<button type="submit" class="btn btn--primary">Enregistrer</button>
-					<button type="button" id="webhookClear" class="btn btn--ghost">Supprimer</button>
+					<button type="button" id="webhookClear" class="btn btn--ghost" aria-label="Supprimer">
+						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round">
+							<polyline points="3 6 5 6 21 6"></polyline>
+							<path
+								d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+							</path>
+						</svg>
+					</button>
 				</div>
 			</form>
-			<p class="settings-note">Laissez vide pour désactiver les notifications.</p>
 		</section>
 
 		<section class="settings-card">
 			<header class="settings-card__header">
-				<h2>Rafraîchissement automatique</h2>
-				<p>Définissez l'intervalle de rafraîchissement automatique du tableau de bord.</p>
+				<div class="settings-card__icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="23 4 23 10 17 10"></polyline>
+						<polyline points="1 20 1 14 7 14"></polyline>
+						<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+					</svg>
+				</div>
+				<div>
+					<h2>Rafraîchissement auto</h2>
+					<p>Intervalle de mise à jour du dashboard.</p>
+				</div>
 			</header>
-			<p class="settings-hint">Valeur actuelle : <span id="autoRefreshLabel"></span></p>
 			<form id="autoRefreshForm" class="settings-form">
-				<label for="autoRefreshMinutes">Intervalle (minutes)</label>
-				<div class="input-row">
-					<input type="number" id="autoRefreshMinutes" min="0" step="0.5">
+				<label for="autoRefreshMinutes" class="input-label">Intervalle (minutes)</label>
+				<div class="input-group">
+					<input type="number" id="autoRefreshMinutes" min="0" step="0.5" placeholder="0">
 					<button type="submit" class="btn btn--primary">Enregistrer</button>
 				</div>
+				<p class="settings-hint">Actuel : <span id="autoRefreshLabel"></span></p>
 			</form>
-			<p class="settings-note">Mettre 0 pour désactiver. Minimum 0,5 minute (30 secondes) lorsque activé.</p>
 		</section>
 	</main>
 
