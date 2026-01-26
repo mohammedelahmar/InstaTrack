@@ -227,6 +227,16 @@ def create_app(
 		except Exception as exc:
 			return jsonify({"status": "error", "message": str(exc)}), 404
 
+	@app.route("/api/analytics/ghosts/<username>", methods=["GET"])
+	def api_get_ghosts(username: str):
+		try:
+			stats = tracker_provider.analyze_audience_quality(username)
+			if "error" in stats:
+				return jsonify({"status": "error", "message": stats["error"]}), 400
+			return jsonify({"status": "ok", "stats": stats})
+		except Exception as exc:
+			return jsonify({"status": "error", "message": str(exc)}), 500
+
 	@app.route("/api/settings/follow-request", methods=["POST"])
 	def api_follow_request():
 		payload = request.get_json(silent=True) or {}

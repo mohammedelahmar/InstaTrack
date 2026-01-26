@@ -178,4 +178,49 @@ class TrackerService:
 		return profile
 
 
+	def analyze_audience_quality(self, target_account: str, post_limit: int = 10) -> Dict[str, object]:
+		"""Analyze audience engagement to identify ghost followers."""
+		import time
+		
+		# 1. Get followers from latest snapshot
+		followers_snap = self._storage.latest_snapshot(target_account, "followers")
+		if not followers_snap:
+			return {"error": "No follower data found. Please run a capture first."}
+		
+		followers_list = followers_snap.get("users", [])
+		total_followers = len(followers_list)
+		follower_usernames = {u.get("username") for u in followers_list}
+		
+		if total_followers == 0:
+			return {"ghost_count": 0, "total_followers": 0, "ghost_percentage": 0}
+
+		# 2. Fetch recent posts
+		medias = self._client.get_user_medias(target_account, amount=post_limit)
+		if not medias:
+			return {"error": "Could not fetch recent posts."}
+
+		# 3. Aggregate engaged users
+		engaged_users = set()
+		for media in medias:
+			likers = self._client.get_media_likers(media["id"])
+			comments = self._client.get_media_comments(media["id"])
+			engaged_users.update(likers)
+			engaged_users.update(comments)
+			# Sleep slightly to avoid rate limits
+			time.sleep(1)
+
+		# 4. Calculate ghosts (Followers NOT in engaged_set)
+		ghosts = [u for u in follower_usernames if u not in engaged_users]
+		ghost_count = len(ghosts)
+		ghost_percentage = (ghost_count / total_followers) * 100
+
+		return {
+			"total_followers": total_followers,
+			"engaged_count": len(engaged_users),
+			"ghost_count": ghost_count,
+			"ghost_percentage": round(ghost_percentage, 1),
+			"analyzed_posts": len(medias)
+		}
+
+
 tracker_service = TrackerService()

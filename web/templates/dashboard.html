@@ -253,6 +253,41 @@
 				</details>
 				{% endif %}
 			</article>
+			<article class="panel mini-panel" style="display: flex; flex-direction: column;">
+				<div class="panel-header">
+					<h2>Audience Quality 👻</h2>
+					<p>Ghost Hunter Analysis</p>
+				</div>
+				<div class="ghost-analysis-container"
+					style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex: 1; padding-bottom: 0.5rem;">
+					<div class="chart-wrapper"
+						style="height: 140px; width: 100%; position: relative; display: none;"
+						id="ghostChartContainer">
+						<canvas id="ghostChart"></canvas>
+						<div
+							style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+							<span id="ghostValue" style="font-size: 1.5rem; font-weight: 700;">--%</span>
+						</div>
+					</div>
+
+					<div id="ghostPlaceholder"
+						style="padding: 1.5rem 0; text-align: center; color: var(--text-muted);">
+						<p style="margin-bottom: 0.5rem;">Ready to hunt ghosts?</p>
+						<small>Checks last 10 posts for engagement</small>
+					</div>
+
+					<div id="ghostStats" style="width: 100%; margin-top: auto; display: none;">
+						<div class="quality-stat" style="justify-content: center; margin-bottom: 1rem;">
+							<span class="stat-value" id="ghostCount">--</span>
+							<span class="stat-label">Ghost Followers</span>
+						</div>
+					</div>
+
+					<button id="btn-ghost-scan" class="btn btn--primary btn--sm" style="width: 100%;">
+						Start Ghost Scan
+					</button>
+				</div>
+			</article>
 			<article class="panel mini-panel">
 				<div class="panel-header">
 					<h2>Relations followers</h2>

@@ -561,6 +561,48 @@ class InstaClient:
 			raise last_error
 		raise RuntimeError("Demande de suivi impossible")
 
+	def get_user_medias(self, username: str, amount: int = 10) -> List[Dict[str, object]]:
+		"""Fetch recent medias for a user."""
+		self._ensure_login()
+		try:
+			user_id = self._client.user_id_from_username(username)
+			medias = self._client.user_medias(user_id, amount=amount)
+			return [
+				{
+					"pk": m.pk,
+					"id": m.id,
+					"code": m.code,
+					"media_type": m.media_type,
+					"like_count": m.like_count,
+					"comment_count": m.comment_count,
+				}
+				for m in medias
+			]
+		except Exception as e:
+			logger.error(f"Failed to fetch medias for {username}: {e}")
+			return []
+
+	def get_media_likers(self, media_id: str) -> List[str]:
+		"""Fetch usernames of users who liked the media."""
+		self._ensure_login()
+		try:
+			users = self._client.media_likers(media_id)
+			return [u.username for u in users]
+		except Exception as e:
+			logger.warning(f"Failed to fetch likers for {media_id}: {e}")
+			return []
+
+	def get_media_comments(self, media_id: str) -> List[str]:
+		"""Fetch usernames of users who commented on the media."""
+		self._ensure_login()
+		try:
+			# fetch last 50 comments to get a good sample
+			comments = self._client.media_comments(media_id, amount=50)
+			return [c.user.username for c in comments]
+		except Exception as e:
+			logger.warning(f"Failed to fetch comments for {media_id}: {e}")
+			return []
+
 	def close(self) -> None:
 		if self._logged_in:
 			try:
