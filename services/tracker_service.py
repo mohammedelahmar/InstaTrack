@@ -219,7 +219,8 @@ class TrackerService:
 			"engaged_count": len(engaged_users),
 			"ghost_count": ghost_count,
 			"ghost_percentage": round(ghost_percentage, 1),
-			"analyzed_posts": len(medias)
+			"analyzed_posts": len(medias),
+			"ghost_users": ghosts  # List of usernames
 		}
 
 
