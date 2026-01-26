@@ -281,6 +281,16 @@
 							<span class="stat-value" id="ghostCount">--</span>
 							<span class="stat-label">Ghost Followers</span>
 						</div>
+
+						<details class="quality-details" id="ghostDetails"
+							style="margin-bottom: 1rem; width: 100%;">
+							<summary id="btn-view-ghosts"
+								style="margin-bottom: 0.5rem; background: rgba(255,255,255,0.05);">Voir la liste
+								(0)</summary>
+							<ul id="ghostList" class="user-list" style="max-height: 200px; overflow-y: auto;">
+								<!-- Populated by JS -->
+							</ul>
+						</details>
 					</div>
 
 					<button id="btn-ghost-scan" class="btn btn--primary btn--sm" style="width: 100%;">

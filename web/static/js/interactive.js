@@ -29,7 +29,130 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Profile Modal
     setupProfileModal();
+
+    // 4. Ghost Hunter
+    setupGhostHunter();
 });
+
+function setupGhostHunter() {
+    const btn = document.getElementById('btn-ghost-scan');
+    if (!btn) return;
+
+    const ctx = document.getElementById('ghostChart');
+    const chartContainer = document.getElementById('ghostChartContainer');
+    const placeholder = document.getElementById('ghostPlaceholder');
+    const statsContainer = document.getElementById('ghostStats');
+    const valueEl = document.getElementById('ghostValue');
+    const countEl = document.getElementById('ghostCount');
+
+    let chartInstance = null;
+
+    btn.addEventListener('click', async () => {
+        // Get target account
+        const configEl = document.getElementById('dashboard-config');
+        const config = configEl ? JSON.parse(configEl.textContent) : {};
+        const target = config.default_account;
+
+        if (!target) {
+            alert("No account selected to scan.");
+            return;
+        }
+
+        // UI Loading State
+        btn.disabled = true;
+        btn.textContent = "Scanning... (approx 10s)";
+        placeholder.style.display = 'none';
+        chartContainer.style.display = 'none';
+        statsContainer.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/analytics/ghosts/${target}`);
+            const data = await res.json();
+
+            if (data.status === 'ok') {
+                const stats = data.stats;
+                
+                // Show Chart Container
+                chartContainer.style.display = 'block';
+                statsContainer.style.display = 'block';
+                
+                // Update Text
+                const ghostPct = stats.ghost_percentage;
+                valueEl.textContent = `${ghostPct}%`;
+                countEl.textContent = stats.ghost_count;
+                
+                // Render Chart
+                if (chartInstance) chartInstance.destroy();
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Ghosts', 'Engaged'],
+                        datasets: [{
+                            data: [stats.ghost_count, stats.engaged_count],
+                            backgroundColor: ['#ef4444', '#10b981'], // Red for ghosts, Green for engaged
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        cutout: '75%',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.label}: ${ctx.raw} users`
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Update ghost list visibility and content
+                const ghostListArea = document.getElementById('ghostList');
+                const ghostDetails = document.getElementById('ghostDetails');
+                const btnViewGhosts = document.getElementById('btn-view-ghosts');
+
+                if (ghostListArea && stats.ghost_users && stats.ghost_users.length > 0) {
+                    ghostListArea.innerHTML = ''; // Clear previous list
+                    stats.ghost_users.forEach(username => {
+                        const li = document.createElement('li');
+                        li.className = 'user-item';
+                        li.style.display = 'flex';
+                        li.style.justifyContent = 'space-between';
+                        li.style.padding = '0.5rem';
+                        li.style.borderBottom = '1px solid var(--border-color)';
+                        
+                        li.innerHTML = `
+                            <span class="user-name" style="font-weight: 500;">${username}</span>
+                            <a href="https://instagram.com/${username}" target="_blank" style="color: var(--text-muted); text-decoration: none;">↗</a>
+                        `;
+                        ghostListArea.appendChild(li);
+                    });
+                    
+                    if (ghostDetails) ghostDetails.style.display = 'block';
+                    if (btnViewGhosts) btnViewGhosts.textContent = `Show Ghosts (${stats.ghost_users.length})`;
+                } else {
+                    if (ghostDetails) ghostDetails.style.display = 'none';
+                }
+                
+                btn.textContent = "Rescan";
+            } else {
+                throw new Error(data.message || "Scan failed");
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Ghost scan failed: " + err.message);
+            placeholder.style.display = 'block';
+            btn.textContent = "Try Again";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
 
 function setupTableFiltering() {
     const table = document.querySelector('.data-table');
