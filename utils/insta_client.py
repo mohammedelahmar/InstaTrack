@@ -579,7 +579,10 @@ class InstaClient:
 				for m in medias
 			]
 		except Exception as e:
-			logger.error(f"Failed to fetch medias for {username}: {e}")
+			msg = str(e)
+			if len(msg) > 200:
+				msg = msg[:200] + "... (truncated)"
+			logger.error(f"Failed to fetch medias for {username}: {msg}")
 			return []
 
 	def get_media_likers(self, media_id: str) -> List[str]:
@@ -589,7 +592,10 @@ class InstaClient:
 			users = self._client.media_likers(media_id)
 			return [u.username for u in users]
 		except Exception as e:
-			logger.warning(f"Failed to fetch likers for {media_id}: {e}")
+			msg = str(e)
+			if len(msg) > 200:
+				msg = msg[:200] + "... (truncated)"
+			logger.warning(f"Failed to fetch likers for {media_id}: {msg}")
 			return []
 
 	def get_media_comments(self, media_id: str) -> List[str]:
@@ -600,7 +606,10 @@ class InstaClient:
 			comments = self._client.media_comments(media_id, amount=50)
 			return [c.user.username for c in comments]
 		except Exception as e:
-			logger.warning(f"Failed to fetch comments for {media_id}: {e}")
+			msg = str(e)
+			if len(msg) > 200:
+				msg = msg[:200] + "... (truncated)"
+			logger.warning(f"Failed to fetch comments for {media_id}: {msg}")
 			return []
 
 	def close(self) -> None:
