@@ -66,12 +66,58 @@ function setupGhostHunter() {
         statsContainer.style.display = 'none';
 
         try {
-            const res = await fetch(`/api/analytics/ghosts/${target}`);
-            const data = await res.json();
+            // 1. Start the scan job
+            const startRes = await fetch(`/api/analytics/ghosts/start/${target}`, { method: 'POST' });
+            const startData = await startRes.json();
 
-            if (data.status === 'ok') {
-                const stats = data.stats;
-                
+            if (startData.status !== 'ok') {
+                throw new Error(startData.message || "Failed to start scan");
+            }
+
+            const jobId = startData.job_id;
+            let attempts = 0;
+            const maxAttempts = 60; // 2 minutes timeout (approx)
+
+            // 2. Poll for status
+            const pollInterval = setInterval(async () => {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    clearInterval(pollInterval);
+                    handleScanError("Scan timed out");
+                    return;
+                }
+
+                try {
+                    const statusRes = await fetch(`/api/analytics/ghosts/status/${jobId}`);
+                    const statusData = await statusRes.json();
+
+                    if (statusData.status === 'completed') {
+                        clearInterval(pollInterval);
+                        renderGhostStats(statusData.stats);
+                    } else if (statusData.status === 'failed') {
+                        clearInterval(pollInterval);
+                        handleScanError(statusData.message);
+                    } else {
+                        // specialized loading text
+                        if (attempts % 3 === 0) btn.textContent = "Analyzing engagement...";
+                        else if (attempts % 3 === 1) btn.textContent = "Checking followers...";
+                        else btn.textContent = "Hunting ghosts...";
+                    }
+                } catch (pollErr) {
+                    clearInterval(pollInterval);
+                    handleScanError("Connection lost");
+                }
+            }, 2000);
+
+            function handleScanError(msg) {
+                console.error(msg);
+                alert("Ghost scan failed: " + msg);
+                placeholder.style.display = 'block';
+                btn.textContent = "Try Again";
+                btn.disabled = false;
+            }
+
+            function renderGhostStats(stats) {
                 // Show Chart Container
                 chartContainer.style.display = 'block';
                 statsContainer.style.display = 'block';
@@ -139,8 +185,7 @@ function setupGhostHunter() {
                 }
                 
                 btn.textContent = "Rescan";
-            } else {
-                throw new Error(data.message || "Scan failed");
+                btn.disabled = false;
             }
 
         } catch (err) {
@@ -148,7 +193,6 @@ function setupGhostHunter() {
             alert("Ghost scan failed: " + err.message);
             placeholder.style.display = 'block';
             btn.textContent = "Try Again";
-        } finally {
             btn.disabled = false;
         }
     });
