@@ -137,27 +137,54 @@ function setupProfileModal() {
             els.followers.textContent = formatNumber(p.follower_count);
             els.following.textContent = formatNumber(p.following_count);
             
-            els.bio.textContent = p.biography || "";
-            
+            if (p.biography) {
+                els.bio.textContent = p.biography;
+                show(els.copyBio, 'inline-flex');
+                
+                // Copy functionality
+                els.copyBio.onclick = () => {
+                    navigator.clipboard.writeText(p.biography).then(() => {
+                        const originalHtml = els.copyBio.innerHTML;
+                        els.copyBio.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6L9 17l-5-5"></path></svg>`;
+                        setTimeout(() => els.copyBio.innerHTML = originalHtml, 2000);
+                    });
+                };
+            } else {
+                els.bio.textContent = "";
+                hide(els.copyBio);
+            }
+
             if (p.external_url) {
                 els.link.href = p.external_url;
-                els.linkText.textContent = new URL(p.external_url).hostname.replace('www.', '');
+                els.linkText.textContent = extractDomain(p.external_url);
                 show(els.link, 'inline-flex');
             } else {
                 hide(els.link);
             }
-            
-            if (p.is_private) {
-                show(els.private, 'inline-block');
+
+             // Privacy Badge
+             if (p.is_private) {
+                show(els.private, 'inline-flex');
                 hide(els.public);
             } else {
                 hide(els.private);
-                show(els.public, 'inline-block');
+                show(els.public, 'inline-flex');
             }
 
-            // We don't have logic for followsYou yet, so keep hidden
-            hide(els.followsYou);
-            hide(els.notFollowsYou);
+             // Friendship Badges
+            // Follows You: They follow me
+            if (p.follows_viewer === true) {
+                show(els.followsYou, 'inline-flex');
+            } else {
+                hide(els.followsYou);
+            }
+
+            // Doesn't Follow Back: I follow them (followed_by_viewer) BUT they don't follow me (follows_viewer is false)
+            if (p.followed_by_viewer === true && !p.follows_viewer) {
+                show(els.notFollowsYou, 'inline-flex');
+            } else {
+                hide(els.notFollowsYou);
+            }
 
         } catch (err) {
             els.fullname.textContent = "Erreur";

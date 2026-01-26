@@ -146,10 +146,36 @@ class TrackerService:
 
 		return {"added": len(added), "removed": len(removed)}
 
-	def get_live_profile(self, username: str) -> Dict[str, object]:
+	def get_live_profile(self, username: str, target: Optional[str] = None) -> Dict[str, object]:
 		"""Fetch fresh profile details on demand."""
 		# Use single retry for UI responsiveness
-		return self._client.get_user_profile(username, retries=1)
+		profile = self._client.get_user_profile(username, retries=1)
+
+		if target:
+			try:
+				# Contextualize friendship status relative to the target account using local data
+				followers_snap = self._storage.latest_snapshot(target, "followers")
+				following_snap = self._storage.latest_snapshot(target, "following")
+
+				followers_set = {u.get("username") for u in (followers_snap.get("users") or [])} if followers_snap else set()
+				following_set = {u.get("username") for u in (following_snap.get("users") or [])} if following_snap else set()
+
+				# "follows_viewer" -> Does the profile follow the target?
+				profile["follows_viewer"] = username in followers_set
+				# "followed_by_viewer" -> Does the target follow the profile?
+				profile["followed_by_viewer"] = username in following_set
+
+				logger.info(
+					"Contextualized profile %s for target %s: follows_target=%s, followed_by_target=%s",
+					username,
+					target,
+					profile["follows_viewer"],
+					profile["followed_by_viewer"]
+				)
+			except Exception as exc:
+				logger.warning("Failed to contextualize profile for target %s: %s", target, exc)
+
+		return profile
 
 
 tracker_service = TrackerService()

@@ -70,6 +70,8 @@ def _simplify_users(users: UserMap) -> List[Dict[str, str]]:
 					"profile_pic_url": str(getattr(info, "profile_pic_url", "")),
 					"is_private": getattr(info, "is_private", False),
 					"is_verified": getattr(info, "is_verified", False),
+					"follows_viewer": getattr(info, "follows_viewer", False),
+					"followed_by_viewer": getattr(info, "followed_by_viewer", False),
 				}
 		simplified.append(
 			{
@@ -412,6 +414,12 @@ class InstaClient:
 			try:
 				# Use private API v1 directly to skip flaky public requests (speed up)
 				info = self._client.user_info_by_username_v1(username)
+				print(f"DEBUG: Fetched info for {username}")
+				print(f"DEBUG: follows_viewer={getattr(info, 'follows_viewer', 'MISSING')}")
+				print(f"DEBUG: followed_by_viewer={getattr(info, 'followed_by_viewer', 'MISSING')}")
+				# Try to check if there is a 'friendship_status' attribute or dict
+				if hasattr(info, 'friendship_status'):
+					print(f"DEBUG: friendship_status={info.friendship_status}")
 				if hasattr(info, "model_dump"):
 					data = info.model_dump()
 				elif hasattr(info, "dict"):
@@ -433,6 +441,26 @@ class InstaClient:
 				data.setdefault("pk", getattr(info, "pk", None))
 				data.setdefault("username", getattr(info, "username", username))
 				data.setdefault("full_name", getattr(info, "full_name", ""))
+				
+				# Friendship Status Fallback
+				follows_viewer = getattr(info, "follows_viewer", None)
+				followed_by_viewer = getattr(info, "followed_by_viewer", None)
+
+				if follows_viewer is None or followed_by_viewer is None:
+					try:
+						# Explicitly fetch friendship status if missing
+						logger.info(f"Fetching explicit friendship status for {username}...")
+						friendship = self._client.user_friendship_v1(data["pk"])
+						follows_viewer = friendship.followed_by  # They follow me
+						followed_by_viewer = friendship.following # I follow them
+						print(f"DEBUG: Explicit friendship fetch: follows_viewer={follows_viewer}")
+					except Exception as e:
+						logger.warning(f"Failed to fetch friendship status: {e}")
+						follows_viewer = False
+						followed_by_viewer = False
+
+				data["follows_viewer"] = follows_viewer
+				data["followed_by_viewer"] = followed_by_viewer
 				return data
 			except ClientError as exc:
 				last_error = exc

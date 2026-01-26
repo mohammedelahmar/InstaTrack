@@ -221,7 +221,8 @@ def create_app(
 	@app.route("/api/profile/<username>", methods=["GET"])
 	def api_get_profile(username: str):
 		try:
-			profile = tracker_provider.get_live_profile(username)
+			target = request.args.get("target")
+			profile = tracker_provider.get_live_profile(username, target=target)
 			return jsonify({"status": "ok", "profile": profile})
 		except Exception as exc:
 			return jsonify({"status": "error", "message": str(exc)}), 404
