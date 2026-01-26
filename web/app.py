@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import csv
 import io
-from typing import Optional
+import threading
+import uuid
+import time
+from typing import Optional, Dict, Any
 import requests
 
 from flask import Flask, Response, jsonify, render_template, request
@@ -227,15 +230,61 @@ def create_app(
 		except Exception as exc:
 			return jsonify({"status": "error", "message": str(exc)}), 404
 
-	@app.route("/api/analytics/ghosts/<username>", methods=["GET"])
-	def api_get_ghosts(username: str):
+	# -------------------------------------------------------------------------
+	# Async Task Queue for Heavy Operations
+	# -------------------------------------------------------------------------
+	jobs: Dict[str, Any] = {}
+
+	def background_ghost_scan(job_id: str, username: str):
+		"""Background thread worker for ghost analysis."""
 		try:
+			jobs[job_id]["status"] = "processing"
+			# Pass allow_cached=False to force a fresh check if needed, 
+			# but here we rely on the service's internal caching or logic.
 			stats = tracker_provider.analyze_audience_quality(username)
+			
 			if "error" in stats:
-				return jsonify({"status": "error", "message": stats["error"]}), 400
-			return jsonify({"status": "ok", "stats": stats})
-		except Exception as exc:
-			return jsonify({"status": "error", "message": str(exc)}), 500
+				jobs[job_id]["status"] = "failed"
+				jobs[job_id]["message"] = stats["error"]
+			else:
+				jobs[job_id]["status"] = "completed"
+				jobs[job_id]["stats"] = stats
+		except Exception as e:
+			app.logger.error(f"Ghost scan job {job_id} failed: {e}", exc_info=True)
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["message"] = str(e)
+
+	@app.route("/api/analytics/ghosts/start/<username>", methods=["POST"])
+	def api_start_ghost_scan(username: str):
+		"""Start a background ghost analysis job."""
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"status": "queued",
+			"start_time": time.time(),
+			"username": username
+		}
+		
+		thread = threading.Thread(
+			target=background_ghost_scan, 
+			args=(job_id, username),
+			daemon=True
+		)
+		thread.start()
+		
+		return jsonify({
+			"status": "ok", 
+			"job_id": job_id,
+			"message": "Ghost scan started via background task"
+		})
+
+	@app.route("/api/analytics/ghosts/status/<job_id>", methods=["GET"])
+	def api_check_ghost_status(job_id: str):
+		"""Poll the status of a background job."""
+		job = jobs.get(job_id)
+		if not job:
+			return jsonify({"status": "error", "message": "Job not found"}), 404
+			
+		return jsonify(job)
 
 	@app.route("/api/settings/follow-request", methods=["POST"])
 	def api_follow_request():
