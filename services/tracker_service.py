@@ -134,7 +134,7 @@ class TrackerService:
 		)
 		self._storage.store_changes(events)
 
-		self._storage.store_changes(events)
+
 
 		logger.info(
 			"%s: %s added, %s removed for %s",
