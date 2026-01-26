@@ -734,17 +734,27 @@ class ReportService:
 
 	@cached(ttl=300)
 	def get_audience_quality_metrics(self, *, target_account: Optional[str] = None) -> Dict[str, object]:
+		defaults = {
+			"total_followers": 0,
+			"verified_count": 0,
+			"private_count": 0,
+			"potential_bots_count": 0,
+			"good_quality_count": 0,
+			"verified_users": [],
+			"potential_bots": [],
+		}
+		
 		if not target_account:
-			return {}
+			return defaults
 
 		latest_followers = self._storage.latest_snapshot(target_account, "followers")
 		if not latest_followers:
-			return {}
+			return defaults
 
 		users = latest_followers.get("users", [])
 		total_followers = len(users)
 		if total_followers == 0:
-			return {}
+			return defaults
 
 		verified_users = []
 		private_users = []
