@@ -275,8 +275,45 @@ body {
 }
 
 .meta-tag--warning {
+	background: rgba(245, 158, 11, 0.15);
+	color: #fbbf24;
+}
+
+.meta-tag--danger {
 	background: rgba(239, 68, 68, 0.15);
 	color: #f87171;
+}
+
+.bio-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	position: relative;
+}
+
+.btn-icon {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	transition: all 0.2s;
+}
+
+.btn-icon:hover {
+	color: var(--text-primary);
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-sm {
+	width: 28px;
+	height: 28px;
+	padding: 4px;
 }
 
 .quality-grid {

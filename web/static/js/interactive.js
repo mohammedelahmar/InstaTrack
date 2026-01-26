@@ -83,10 +83,19 @@ function setupProfileModal() {
         public: document.getElementById('p-public'),
         followsYou: document.getElementById('p-follows-you'),
         notFollowsYou: document.getElementById('p-not-follows-you'),
+        copyBio: document.getElementById('p-copy-bio'),
     };
 
     const formatNumber = (num) => {
         return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num || 0);
+    };
+
+    const extractDomain = (url) => {
+        try {
+            return new URL(url).hostname.replace('www.', '');
+        } catch (e) {
+            return url;
+        }
     };
 
     const openModal = async (username) => {
@@ -107,13 +116,21 @@ function setupProfileModal() {
 
         hide(els.link);
         hide(els.badge);
+        hide(els.copyBio);
         hide(els.private);
         hide(els.public);
         hide(els.followsYou);
         hide(els.notFollowsYou);
 
+        hide(els.notFollowsYou);
+
         try {
-            const res = await fetch(`/api/profile/${username}`);
+            // Get target account from config
+            const configEl = document.getElementById('dashboard-config');
+            const config = configEl ? JSON.parse(configEl.textContent) : {};
+            const target = config.default_account || '';
+
+            const res = await fetch(`/api/profile/${username}?target=${encodeURIComponent(target)}`);
             const data = await res.json();
             if (data.status !== 'ok') throw new Error(data.message);
 
