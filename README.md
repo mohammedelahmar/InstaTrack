@@ -8,6 +8,8 @@
 **Your personal dashboard for tracking your Instagram audience.**
 InstaTrack monitors your followers, detects unfollows, identifies ghost followers, and helps you understand who really engages with your content.
 
+![Dashboard Preview](assets/dashboard_full.png)
+
 ---
 
 ## 🚀 Quick Start
@@ -56,6 +58,8 @@ Open your browser at **[http://127.0.0.1:5000](http://127.0.0.1:5000)**.
 ---
 
 ## ✨ Key Features
+
+![Analysis Graphs](assets/dashboard_graphs.png)
 
 - **Ghost Hunter 👻**: Identify inactive followers who never like your posts (New!).
 - **Unfollow Tracking 📉**: See who unfollowed you since yesterday.
